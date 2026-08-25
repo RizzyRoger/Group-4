@@ -2,7 +2,7 @@ const DEFAULT_MODEL = "grok-4-fast";
 const FALLBACK_MODEL = "grok-4.6";
 const DEFAULT_MODE = "ungrouped_only";
 const XAI_URL = "https://api.x.ai/v1/chat/completions";
-const MAX_TOKENS = 400;
+const MAX_TOKENS = 1200;
 const COLORS = [
   "grey",
   "blue",
@@ -13,6 +13,13 @@ const COLORS = [
   "purple",
   "cyan",
   "orange",
+];
+
+const ICON_SQUARE_COLORS = [
+  "rgb(76, 141, 255)",
+  "rgb(61, 220, 151)",
+  "rgb(192, 132, 252)",
+  "rgb(255, 176, 32)",
 ];
 
 const MODES = {
@@ -69,14 +76,16 @@ const SKIP_URL_PREFIXES = [
 
 const MODE_INSTRUCTIONS = {
   ungrouped_only:
-    "Mode: only ungrouped tabs. Input is a JSON array of {id, title, host}. Ignore keepId.",
+    "Mode: only ungrouped tabs. Input is a JSON array of {id, title, host}. Ignore keepId. Put every id that belongs with another tab into a group.",
   regroup_all:
-    "Mode: regroup all tabs. Input is a JSON array of {id, title, host}. Ignore keepId. Propose a full grouping from scratch.",
+    "Mode: regroup all tabs. Input is a JSON array of {id, title, host}. Ignore keepId. Propose a full grouping from scratch. Put every id that belongs with another tab into a group.",
   merge_smart:
-    "Mode: keep existing groups when they still make sense. Input is {existing:[{keepId,name,color,tabs:[{id,title,host}]}], ungrouped:[{id,title,host}]}. Reuse keepId to add tabs to that group or rename it. Omit keepId to create a new group. Do not list groups you want left unchanged. A tab appears in at most one returned group.",
+    "Mode: keep existing groups when they still make sense. Input is {existing:[{keepId,name,color,tabs:[{id,title,host}]}], ungrouped:[{id,title,host}]}. Reuse keepId to add tabs to that group or rename it. Omit keepId to create a new group. Do not list groups you want left unchanged. A tab appears in at most one returned group. Put every ungrouped id that belongs with others into a keepId or a new group.",
 };
 
 let skillCache;
+let iconTimer = null;
+let iconFrame = 0;
 
 chrome.runtime.onInstalled.addListener(() => {
   setupMenus();
@@ -85,8 +94,6 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onStartup.addListener(() => {
   setupMenus();
 });
-
-setupMenus();
 
 chrome.contextMenus.onClicked.addListener(async (info) => {
   if (!MODES[info.menuItemId]) return;
@@ -107,13 +114,13 @@ async function setupMenus() {
   const current = MODES[mode] ? mode : DEFAULT_MODE;
   await chrome.storage.local.set({ mode: current });
   await chrome.contextMenus.removeAll();
-  chrome.contextMenus.create({
+  await chrome.contextMenus.create({
     id: "grouping_mode",
     title: "Grouping mode",
     contexts: ["action"],
   });
   for (const [id, { title }] of Object.entries(MODES)) {
-    chrome.contextMenus.create({
+    await chrome.contextMenus.create({
       id,
       parentId: "grouping_mode",
       type: "radio",
@@ -147,53 +154,72 @@ async function groupCurrentWindow(windowId) {
   }
 
   const activeMode = MODES[mode] ? mode : DEFAULT_MODE;
+  const resolvedModel = model || DEFAULT_MODEL;
+  startIconSpin();
   await setBadge("...", "#2563eb");
 
-  if (activeMode === "regroup_all") {
-    await ungroupWindow(windowId);
-  }
+  try {
+    if (activeMode === "regroup_all") {
+      await ungroupWindow(windowId);
+    }
 
-  if (activeMode === "merge_smart") {
-    const snapshot = await collectMergeSnapshot(windowId);
-    const movable = [
-      ...snapshot.existing.flatMap((group) => group.tabs),
-      ...snapshot.ungrouped,
-    ];
-    if (movable.length < 2) {
+    if (activeMode === "merge_smart") {
+      const snapshot = await collectMergeSnapshot(windowId);
+      const movable = [
+        ...snapshot.existing.flatMap((group) => group.tabs),
+        ...snapshot.ungrouped,
+      ];
+      if (movable.length < 2) {
+        await flashBadge("-", "#6b7280");
+        return;
+      }
+      const existingIds = new Set(snapshot.existing.map((group) => group.keepId));
+      const result = await requestGroups(apiKey, resolvedModel, snapshot, activeMode);
+      await applyMergeGroups(
+        windowId,
+        result.groups || [],
+        new Set(movable.map((tab) => tab.id)),
+        existingIds
+      );
+      await groupLeftovers(
+        windowId,
+        apiKey,
+        resolvedModel,
+        new Set(snapshot.ungrouped.map((tab) => tab.id))
+      );
+      await flashBadge("OK", "#16a34a");
+      return;
+    }
+
+    const tabs = await collectUngroupedTabs(windowId);
+    if (tabs.length < 2) {
       await flashBadge("-", "#6b7280");
       return;
     }
-    const result = await requestGroups(
-      apiKey,
-      model || DEFAULT_MODEL,
-      snapshot,
-      activeMode
-    );
-    await applyMergeGroups(
+
+    const payload = tabs.map(({ id, title, host }) => ({ id, title, host }));
+    const result = await requestGroups(apiKey, resolvedModel, payload, activeMode);
+    await applyGroups(windowId, result.groups || [], new Set(tabs.map((t) => t.id)));
+    await groupLeftovers(
       windowId,
-      result.groups || [],
-      new Set(movable.map((tab) => tab.id)),
-      new Set(snapshot.existing.map((group) => group.keepId))
+      apiKey,
+      resolvedModel,
+      new Set(tabs.map((tab) => tab.id))
     );
     await flashBadge("OK", "#16a34a");
-    return;
+  } finally {
+    await stopIconSpin();
   }
+}
 
-  const tabs = await collectUngroupedTabs(windowId);
-  if (tabs.length < 2) {
-    await flashBadge("-", "#6b7280");
-    return;
-  }
-
-  const payload = tabs.map(({ id, title, host }) => ({ id, title, host }));
-  const result = await requestGroups(
-    apiKey,
-    model || DEFAULT_MODEL,
-    payload,
-    activeMode
+async function groupLeftovers(windowId, apiKey, model, sentIds) {
+  const leftover = (await collectUngroupedTabs(windowId)).filter((tab) =>
+    sentIds.has(tab.id)
   );
-  await applyGroups(windowId, result.groups || [], new Set(tabs.map((t) => t.id)));
-  await flashBadge("OK", "#16a34a");
+  if (leftover.length < 2) return;
+  const payload = leftover.map(({ id, title, host }) => ({ id, title, host }));
+  const result = await requestGroups(apiKey, model, payload, "ungrouped_only");
+  await applyGroups(windowId, result.groups || [], new Set(leftover.map((tab) => tab.id)));
 }
 
 function tabPayload(tab) {
@@ -362,6 +388,15 @@ function groupStyle(group) {
   };
 }
 
+async function tryGroupTabs(options) {
+  try {
+    return await chrome.tabs.group(options);
+  } catch (error) {
+    console.error("Group Four: tabs.group failed", error, options);
+    return null;
+  }
+}
+
 async function applyGroups(windowId, groups, validIds) {
   const remaining = new Set(validIds);
   for (const group of groups) {
@@ -371,11 +406,16 @@ async function applyGroups(windowId, groups, validIds) {
     const ids = await stillEligible(windowId, requested, true);
     if (ids.length < 2) continue;
 
-    const groupId = await chrome.tabs.group({
+    const groupId = await tryGroupTabs({
       tabIds: ids,
       createProperties: { windowId },
     });
-    await chrome.tabGroups.update(groupId, groupStyle(group));
+    if (groupId == null) continue;
+    try {
+      await chrome.tabGroups.update(groupId, groupStyle(group));
+    } catch (error) {
+      console.error("Group Four: tabGroups.update failed", error);
+    }
     for (const id of ids) remaining.delete(id);
   }
 }
@@ -393,16 +433,26 @@ async function applyMergeGroups(windowId, groups, validIds, existingIds) {
     const reuse =
       group.keepId != null && Number.isInteger(keepId) && existingIds.has(keepId);
     if (reuse) {
-      await chrome.tabs.group({ tabIds: ids, groupId: keepId });
-      await chrome.tabGroups.update(keepId, groupStyle(group));
+      const grouped = await tryGroupTabs({ tabIds: ids, groupId: keepId });
+      if (grouped == null) continue;
+      try {
+        await chrome.tabGroups.update(keepId, groupStyle(group));
+      } catch (error) {
+        console.error("Group Four: tabGroups.update failed", error);
+      }
       existingIds.delete(keepId);
     } else {
       if (ids.length < 2) continue;
-      const groupId = await chrome.tabs.group({
+      const groupId = await tryGroupTabs({
         tabIds: ids,
         createProperties: { windowId },
       });
-      await chrome.tabGroups.update(groupId, groupStyle(group));
+      if (groupId == null) continue;
+      try {
+        await chrome.tabGroups.update(groupId, groupStyle(group));
+      } catch (error) {
+        console.error("Group Four: tabGroups.update failed", error);
+      }
     }
     for (const id of ids) remaining.delete(id);
   }
@@ -419,6 +469,64 @@ async function stillEligible(windowId, ids, ungroupedOnly) {
     }
     return true;
   });
+}
+
+function startIconSpin() {
+  stopIconSpin(false);
+  iconFrame = 0;
+  paintIcon(0);
+  iconTimer = setInterval(() => {
+    iconFrame = (iconFrame + 1) % 4;
+    paintIcon(iconFrame);
+  }, 150);
+}
+
+async function stopIconSpin(restore = true) {
+  if (iconTimer != null) {
+    clearInterval(iconTimer);
+    iconTimer = null;
+  }
+  if (!restore) return;
+  await chrome.action.setIcon({
+    path: {
+      16: "icons/icon16.png",
+      48: "icons/icon48.png",
+      128: "icons/icon128.png",
+    },
+  });
+}
+
+function paintIcon(frame) {
+  chrome.action.setIcon({
+    imageData: {
+      16: drawIcon(16, frame),
+      48: drawIcon(48, frame),
+      128: drawIcon(128, frame),
+    },
+  });
+}
+
+function drawIcon(size, frame) {
+  const canvas = new OffscreenCanvas(size, size);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "rgb(18, 28, 45)";
+  ctx.fillRect(0, 0, size, size);
+  const pad = Math.max(1, Math.floor(size / 8));
+  const gap = Math.max(1, Math.floor(size / 16));
+  const inner = size - pad * 2;
+  const tile = Math.floor((inner - gap) / 2);
+  const positions = [
+    [pad, pad],
+    [pad + tile + gap, pad],
+    [pad + tile + gap, pad + tile + gap],
+    [pad, pad + tile + gap],
+  ];
+  for (let i = 0; i < 4; i += 1) {
+    const [x, y] = positions[i];
+    ctx.fillStyle = ICON_SQUARE_COLORS[(i - frame + 4) % 4];
+    ctx.fillRect(x, y, tile, tile);
+  }
+  return ctx.getImageData(0, 0, size, size);
 }
 
 async function setBadge(text, color) {

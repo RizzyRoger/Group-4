@@ -5,7 +5,8 @@ Rules:
 - Same site or file type is not a group by itself. Do not dump all Docs, all Gmail, or all Google tabs together.
 - School tools used together (grade portal, Classroom, school Gmail) = one group.
 - Research on one subject (essay + searches + sources about that subject) = one group, even if other docs exist.
-- Only groups of 2+ tabs. Leave unrelated leftovers ungrouped.
+- Only groups of 2+ tabs. A tab with no partner may stay ungrouped. Do not omit a tab that belongs with others.
+- Every input id that belongs in a 2+ group must appear in the output.
 - Names: 1–3 words, specific (e.g. "Joy Luck", "School"), never "Google" or "Tabs".
 - Pick a distinct Chrome color per group.
 

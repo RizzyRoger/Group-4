@@ -27,6 +27,6 @@ Click the toolbar icon to group tabs in the current window. Right-click the icon
 - **Regroup all tabs** — ungroup the window, then group from scratch
 - **Keep and adjust groups** — keep groups that still make sense; add or create as needed
 
-Pinned tabs and `chrome://` pages are skipped.
+Pinned tabs and `chrome://` pages are skipped. The toolbar icon rotates its square colors while grouping.
 
 Badge: `...` working, `OK` done, `!` error, `-` nothing to group.
