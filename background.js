@@ -86,6 +86,13 @@ const MODE_INSTRUCTIONS = {
 let skillCache;
 let iconTimer = null;
 let iconFrame = 0;
+let iconRestoreTimer = null;
+
+const RESULT_BORDERS = {
+  green: "rgb(22, 163, 74)",
+  red: "rgb(192, 57, 43)",
+  grey: "rgb(107, 114, 128)",
+};
 
 chrome.runtime.onInstalled.addListener(() => {
   setupMenus();
@@ -101,12 +108,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
 });
 
 chrome.action.onClicked.addListener(async (tab) => {
-  try {
-    await groupCurrentWindow(tab.windowId);
-  } catch (error) {
-    console.error("Group Four failed:", error);
-    await flashBadge("!", "#c0392b");
-  }
+  await groupCurrentWindow(tab.windowId);
 });
 
 async function setupMenus() {
@@ -155,8 +157,8 @@ async function groupCurrentWindow(windowId) {
 
   const activeMode = MODES[mode] ? mode : DEFAULT_MODE;
   const resolvedModel = model || DEFAULT_MODEL;
+  let result = "green";
   startIconSpin();
-  await setBadge("...", "#2563eb");
 
   try {
     if (activeMode === "regroup_all") {
@@ -170,14 +172,14 @@ async function groupCurrentWindow(windowId) {
         ...snapshot.ungrouped,
       ];
       if (movable.length < 2) {
-        await flashBadge("-", "#6b7280");
+        result = "grey";
         return;
       }
       const existingIds = new Set(snapshot.existing.map((group) => group.keepId));
-      const result = await requestGroups(apiKey, resolvedModel, snapshot, activeMode);
+      const grokResult = await requestGroups(apiKey, resolvedModel, snapshot, activeMode);
       await applyMergeGroups(
         windowId,
-        result.groups || [],
+        grokResult.groups || [],
         new Set(movable.map((tab) => tab.id)),
         existingIds
       );
@@ -187,28 +189,29 @@ async function groupCurrentWindow(windowId) {
         resolvedModel,
         new Set(snapshot.ungrouped.map((tab) => tab.id))
       );
-      await flashBadge("OK", "#16a34a");
       return;
     }
 
     const tabs = await collectUngroupedTabs(windowId);
     if (tabs.length < 2) {
-      await flashBadge("-", "#6b7280");
+      result = "grey";
       return;
     }
 
     const payload = tabs.map(({ id, title, host }) => ({ id, title, host }));
-    const result = await requestGroups(apiKey, resolvedModel, payload, activeMode);
-    await applyGroups(windowId, result.groups || [], new Set(tabs.map((t) => t.id)));
+    const grokResult = await requestGroups(apiKey, resolvedModel, payload, activeMode);
+    await applyGroups(windowId, grokResult.groups || [], new Set(tabs.map((t) => t.id)));
     await groupLeftovers(
       windowId,
       apiKey,
       resolvedModel,
       new Set(tabs.map((tab) => tab.id))
     );
-    await flashBadge("OK", "#16a34a");
+  } catch (error) {
+    console.error("Group Four failed:", error);
+    result = "red";
   } finally {
-    await stopIconSpin();
+    await showIconResult(result);
   }
 }
 
@@ -472,7 +475,12 @@ async function stillEligible(windowId, ids, ungroupedOnly) {
 }
 
 function startIconSpin() {
+  if (iconRestoreTimer != null) {
+    clearTimeout(iconRestoreTimer);
+    iconRestoreTimer = null;
+  }
   stopIconSpin(false);
+  chrome.action.setBadgeText({ text: "" });
   iconFrame = 0;
   paintIcon(0);
   iconTimer = setInterval(() => {
@@ -481,13 +489,13 @@ function startIconSpin() {
   }, 150);
 }
 
-async function stopIconSpin(restore = true) {
+function stopIconSpin(restore = true) {
   if (iconTimer != null) {
     clearInterval(iconTimer);
     iconTimer = null;
   }
   if (!restore) return;
-  await chrome.action.setIcon({
+  chrome.action.setIcon({
     path: {
       16: "icons/icon16.png",
       48: "icons/icon48.png",
@@ -496,17 +504,27 @@ async function stopIconSpin(restore = true) {
   });
 }
 
-function paintIcon(frame) {
+async function showIconResult(result) {
+  stopIconSpin(false);
+  paintIcon(0, RESULT_BORDERS[result] || RESULT_BORDERS.grey);
+  if (iconRestoreTimer != null) clearTimeout(iconRestoreTimer);
+  iconRestoreTimer = setTimeout(() => {
+    iconRestoreTimer = null;
+    stopIconSpin(true);
+  }, 2500);
+}
+
+function paintIcon(frame, border) {
   chrome.action.setIcon({
     imageData: {
-      16: drawIcon(16, frame),
-      48: drawIcon(48, frame),
-      128: drawIcon(128, frame),
+      16: drawIcon(16, frame, border),
+      48: drawIcon(48, frame, border),
+      128: drawIcon(128, frame, border),
     },
   });
 }
 
-function drawIcon(size, frame) {
+function drawIcon(size, frame, border) {
   const canvas = new OffscreenCanvas(size, size);
   const ctx = canvas.getContext("2d");
   ctx.fillStyle = "rgb(18, 28, 45)";
@@ -526,17 +544,11 @@ function drawIcon(size, frame) {
     ctx.fillStyle = ICON_SQUARE_COLORS[(i - frame + 4) % 4];
     ctx.fillRect(x, y, tile, tile);
   }
+  if (border) {
+    const width = Math.max(2, Math.floor(size / 16));
+    ctx.strokeStyle = border;
+    ctx.lineWidth = width;
+    ctx.strokeRect(width / 2, width / 2, size - width, size - width);
+  }
   return ctx.getImageData(0, 0, size, size);
-}
-
-async function setBadge(text, color) {
-  await chrome.action.setBadgeBackgroundColor({ color });
-  await chrome.action.setBadgeText({ text });
-}
-
-async function flashBadge(text, color) {
-  await setBadge(text, color);
-  setTimeout(() => {
-    chrome.action.setBadgeText({ text: "" });
-  }, 2500);
 }
