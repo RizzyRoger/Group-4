@@ -1,6 +1,6 @@
 # Group Four
 
-One-click Chrome extension that groups tabs in the current window with Grok. Right-click the toolbar icon to switch grouping mode.
+One-click chrome browser extension that helps you manage your Tabs in one click using grok
 
 ## Install (load unpacked)
 
