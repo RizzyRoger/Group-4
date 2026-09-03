@@ -1,8 +1,6 @@
-const DEFAULT_MODEL = "grok-4-fast";
-const FALLBACK_MODEL = "grok-4.6";
+importScripts("group.js");
+
 const DEFAULT_MODE = "ungrouped_only";
-const XAI_URL = "https://api.x.ai/v1/chat/completions";
-const MAX_TOKENS = 1200;
 const COLORS = [
   "grey",
   "blue",
@@ -37,35 +35,6 @@ const MODES = {
   },
 };
 
-const RESPONSE_SCHEMA = {
-  type: "json_schema",
-  json_schema: {
-    name: "tab_groups",
-    strict: true,
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      required: ["groups"],
-      properties: {
-        groups: {
-          type: "array",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            required: ["name", "color", "ids", "keepId"],
-            properties: {
-              name: { type: "string" },
-              color: { type: "string", enum: COLORS },
-              ids: { type: "array", items: { type: "integer" } },
-              keepId: { type: ["integer", "null"] },
-            },
-          },
-        },
-      },
-    },
-  },
-};
-
 const SKIP_URL_PREFIXES = [
   "chrome://",
   "chrome-extension://",
@@ -74,19 +43,14 @@ const SKIP_URL_PREFIXES = [
   "devtools://",
 ];
 
-const MODE_INSTRUCTIONS = {
-  ungrouped_only:
-    "Mode: only ungrouped tabs. Input is a JSON array of {id, title, host}. Ignore keepId. Put every id that belongs with another tab into a group.",
-  regroup_all:
-    "Mode: regroup all tabs. Input is a JSON array of {id, title, host}. Ignore keepId. Propose a full grouping from scratch. Put every id that belongs with another tab into a group.",
-  merge_smart:
-    "Mode: keep existing groups when they still make sense. Input is {existing:[{keepId,name,color,tabs:[{id,title,host}]}], ungrouped:[{id,title,host}]}. Reuse keepId to add tabs to that group or rename it. Omit keepId to create a new group. Do not list groups you want left unchanged. A tab appears in at most one returned group. Put every ungrouped id that belongs with others into a keepId or a new group.",
-};
-
-let skillCache;
 let iconTimer = null;
 let iconFrame = 0;
 let iconRestoreTimer = null;
+let busy = false;
+let cachedMode = DEFAULT_MODE;
+let modeReady = false;
+
+const RESULT_HOLD_MS = 700;
 
 const RESULT_BORDERS = {
   green: "rgb(22, 163, 74)",
@@ -113,8 +77,9 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 async function setupMenus() {
   const { mode } = await chrome.storage.local.get("mode");
-  const current = MODES[mode] ? mode : DEFAULT_MODE;
-  await chrome.storage.local.set({ mode: current });
+  cachedMode = MODES[mode] ? mode : DEFAULT_MODE;
+  modeReady = true;
+  await chrome.storage.local.set({ mode: cachedMode });
   await chrome.contextMenus.removeAll();
   await chrome.contextMenus.create({
     id: "grouping_mode",
@@ -127,16 +92,26 @@ async function setupMenus() {
       parentId: "grouping_mode",
       type: "radio",
       title,
-      checked: id === current,
+      checked: id === cachedMode,
       contexts: ["action"],
     });
   }
-  await updateTooltip(current);
+  await updateTooltip(cachedMode);
 }
 
 async function setMode(mode) {
-  await chrome.storage.local.set({ mode });
-  await updateTooltip(mode);
+  cachedMode = MODES[mode] ? mode : DEFAULT_MODE;
+  modeReady = true;
+  await chrome.storage.local.set({ mode: cachedMode });
+  await updateTooltip(cachedMode);
+}
+
+async function getMode() {
+  if (modeReady && MODES[cachedMode]) return cachedMode;
+  const { mode } = await chrome.storage.local.get("mode");
+  cachedMode = MODES[mode] ? mode : DEFAULT_MODE;
+  modeReady = true;
+  return cachedMode;
 }
 
 async function updateTooltip(mode) {
@@ -145,22 +120,14 @@ async function updateTooltip(mode) {
 }
 
 async function groupCurrentWindow(windowId) {
-  const { apiKey, model, mode } = await chrome.storage.local.get([
-    "apiKey",
-    "model",
-    "mode",
-  ]);
-  if (!apiKey) {
-    await chrome.runtime.openOptionsPage();
-    return;
-  }
-
-  const activeMode = MODES[mode] ? mode : DEFAULT_MODE;
-  const resolvedModel = model || DEFAULT_MODEL;
+  if (busy) return;
+  busy = true;
   let result = "green";
-  startIconSpin();
 
   try {
+    const activeMode = await getMode();
+    startIconSpin();
+
     if (activeMode === "regroup_all") {
       await ungroupWindow(windowId);
     }
@@ -176,18 +143,12 @@ async function groupCurrentWindow(windowId) {
         return;
       }
       const existingIds = new Set(snapshot.existing.map((group) => group.keepId));
-      const grokResult = await requestGroups(apiKey, resolvedModel, snapshot, activeMode);
+      const groups = mergeIntoExisting(snapshot.existing, snapshot.ungrouped);
       await applyMergeGroups(
         windowId,
-        grokResult.groups || [],
+        groups,
         new Set(movable.map((tab) => tab.id)),
         existingIds
-      );
-      await groupLeftovers(
-        windowId,
-        apiKey,
-        resolvedModel,
-        new Set(snapshot.ungrouped.map((tab) => tab.id))
       );
       return;
     }
@@ -198,31 +159,15 @@ async function groupCurrentWindow(windowId) {
       return;
     }
 
-    const payload = tabs.map(({ id, title, host }) => ({ id, title, host }));
-    const grokResult = await requestGroups(apiKey, resolvedModel, payload, activeMode);
-    await applyGroups(windowId, grokResult.groups || [], new Set(tabs.map((t) => t.id)));
-    await groupLeftovers(
-      windowId,
-      apiKey,
-      resolvedModel,
-      new Set(tabs.map((tab) => tab.id))
-    );
+    const groups = clusterTabs(tabs);
+    await applyGroups(windowId, groups, new Set(tabs.map((tab) => tab.id)));
   } catch (error) {
     console.error("Group Four failed:", error);
     result = "red";
   } finally {
     await showIconResult(result);
+    busy = false;
   }
-}
-
-async function groupLeftovers(windowId, apiKey, model, sentIds) {
-  const leftover = (await collectUngroupedTabs(windowId)).filter((tab) =>
-    sentIds.has(tab.id)
-  );
-  if (leftover.length < 2) return;
-  const payload = leftover.map(({ id, title, host }) => ({ id, title, host }));
-  const result = await requestGroups(apiKey, model, payload, "ungrouped_only");
-  await applyGroups(windowId, result.groups || [], new Set(leftover.map((tab) => tab.id)));
 }
 
 function tabPayload(tab) {
@@ -270,16 +215,17 @@ async function collectMergeSnapshot(windowId) {
     byGroup.get(tab.groupId).push(payload);
   }
 
-  const existing = [];
-  for (const [keepId, groupTabs] of byGroup) {
-    const group = await chrome.tabGroups.get(keepId);
-    existing.push({
-      keepId,
-      name: group.title || "",
-      color: group.color,
-      tabs: groupTabs,
-    });
-  }
+  const existing = await Promise.all(
+    [...byGroup.entries()].map(async ([keepId, groupTabs]) => {
+      const group = await chrome.tabGroups.get(keepId);
+      return {
+        keepId,
+        name: group.title || "",
+        color: group.color,
+        tabs: groupTabs,
+      };
+    })
+  );
   return { existing, ungrouped };
 }
 
@@ -292,96 +238,6 @@ async function ungroupWindow(windowId) {
     )
     .map((tab) => tab.id);
   if (ids.length) await chrome.tabs.ungroup(ids);
-}
-
-async function getSkill() {
-  if (skillCache) return skillCache;
-  const response = await fetch(chrome.runtime.getURL("SKILL.md"));
-  skillCache = await response.text();
-  return skillCache;
-}
-
-async function requestGroups(apiKey, model, payload, mode) {
-  const skill = await getSkill();
-  const instruction = MODE_INSTRUCTIONS[mode] || MODE_INSTRUCTIONS[DEFAULT_MODE];
-  const messages = [
-    { role: "system", content: `${skill}\n${instruction}` },
-    { role: "user", content: JSON.stringify(payload) },
-  ];
-
-  let lastError;
-  for (const candidate of uniqueModels(model)) {
-    try {
-      return await callGrok(apiKey, candidate, messages, RESPONSE_SCHEMA);
-    } catch (error) {
-      lastError = error;
-      if (isAuthError(error)) throw error;
-      if (!isModelError(error)) break;
-    }
-  }
-
-  try {
-    return await callGrok(apiKey, model || DEFAULT_MODEL, messages, {
-      type: "json_object",
-    });
-  } catch (error) {
-    throw lastError || error;
-  }
-}
-
-function uniqueModels(preferred) {
-  return [...new Set([preferred || DEFAULT_MODEL, FALLBACK_MODEL])];
-}
-
-function isAuthError(error) {
-  return error && (error.status === 401 || error.status === 403);
-}
-
-function isModelError(error) {
-  const text = String(error && error.message ? error.message : error).toLowerCase();
-  return /model.*(not found|invalid|does not exist)|unknown model|invalid model/.test(
-    text
-  );
-}
-
-async function callGrok(apiKey, model, messages, responseFormat) {
-  const response = await fetch(XAI_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0,
-      max_tokens: MAX_TOKENS,
-      response_format: responseFormat,
-    }),
-  });
-
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const detail = body.error?.message || body.error || response.statusText;
-    const error = new Error(`Grok ${response.status}: ${detail}`);
-    error.status = response.status;
-    throw error;
-  }
-
-  const content = body.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Grok returned an empty response.");
-  return parseGroups(content);
-}
-
-function parseGroups(content) {
-  let text = String(content).trim();
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenced) text = fenced[1].trim();
-  const parsed = JSON.parse(text);
-  if (!parsed || !Array.isArray(parsed.groups)) {
-    throw new Error("Grok response was missing groups.");
-  }
-  return parsed;
 }
 
 function groupStyle(group) {
@@ -402,12 +258,15 @@ async function tryGroupTabs(options) {
 
 async function applyGroups(windowId, groups, validIds) {
   const remaining = new Set(validIds);
+  const byId = await loadTabMap(windowId);
+  const packed = [];
   for (const group of groups) {
     const requested = [
       ...new Set((group.ids || []).map(Number).filter((id) => remaining.has(id))),
     ];
-    const ids = await stillEligible(windowId, requested, true);
-    if (ids.length < 2) continue;
+    const ids = stillEligible(byId, requested, true);
+    if (ids.length < 2 && group.name !== "Misc") continue;
+    if (!ids.length) continue;
 
     const groupId = await tryGroupTabs({
       tabIds: ids,
@@ -419,17 +278,22 @@ async function applyGroups(windowId, groups, validIds) {
     } catch (error) {
       console.error("Group Four: tabGroups.update failed", error);
     }
+    markGrouped(byId, ids, groupId);
+    packed.push(groupId);
     for (const id of ids) remaining.delete(id);
   }
+  await packGroups(packed);
 }
 
 async function applyMergeGroups(windowId, groups, validIds, existingIds) {
   const remaining = new Set(validIds);
+  const byId = await loadTabMap(windowId);
+  const packed = [];
   for (const group of groups) {
     const requested = [
       ...new Set((group.ids || []).map(Number).filter((id) => remaining.has(id))),
     ];
-    const ids = await stillEligible(windowId, requested, false);
+    const ids = stillEligible(byId, requested, false);
     if (!ids.length) continue;
 
     const keepId = Number(group.keepId);
@@ -443,9 +307,12 @@ async function applyMergeGroups(windowId, groups, validIds, existingIds) {
       } catch (error) {
         console.error("Group Four: tabGroups.update failed", error);
       }
+      markGrouped(byId, ids, keepId);
+      packed.push(keepId);
       existingIds.delete(keepId);
     } else {
-      if (ids.length < 2) continue;
+      if (ids.length < 2 && group.name !== "Misc") continue;
+      if (!ids.length) continue;
       const groupId = await tryGroupTabs({
         tabIds: ids,
         createProperties: { windowId },
@@ -456,14 +323,20 @@ async function applyMergeGroups(windowId, groups, validIds, existingIds) {
       } catch (error) {
         console.error("Group Four: tabGroups.update failed", error);
       }
+      markGrouped(byId, ids, groupId);
+      packed.push(groupId);
     }
     for (const id of ids) remaining.delete(id);
   }
+  await packGroups(packed);
 }
 
-async function stillEligible(windowId, ids, ungroupedOnly) {
+async function loadTabMap(windowId) {
   const tabs = await chrome.tabs.query({ windowId });
-  const byId = new Map(tabs.map((tab) => [tab.id, tab]));
+  return new Map(tabs.map((tab) => [tab.id, tab]));
+}
+
+function stillEligible(byId, ids, ungroupedOnly) {
   return ids.filter((id) => {
     const tab = byId.get(id);
     if (!tab || isSkippable(tab)) return false;
@@ -472,6 +345,37 @@ async function stillEligible(windowId, ids, ungroupedOnly) {
     }
     return true;
   });
+}
+
+function markGrouped(byId, ids, groupId) {
+  for (const id of ids) {
+    const tab = byId.get(id);
+    if (tab) tab.groupId = groupId;
+  }
+}
+
+async function packGroups(groupIds) {
+  const uniqueIds = [...new Set(groupIds.filter((id) => Number.isInteger(id)))];
+  if (!uniqueIds.length) return;
+  const details = (
+    await Promise.all(
+      uniqueIds.map(async (id) => {
+        try {
+          return await chrome.tabGroups.get(id);
+        } catch {
+          return null;
+        }
+      })
+    )
+  ).filter(Boolean);
+  details.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+  for (const group of details) {
+    try {
+      await chrome.tabGroups.move(group.id, { index: -1 });
+    } catch (error) {
+      console.error("Group Four: tabGroups.move failed", error);
+    }
+  }
 }
 
 function startIconSpin() {
@@ -511,7 +415,7 @@ async function showIconResult(result) {
   iconRestoreTimer = setTimeout(() => {
     iconRestoreTimer = null;
     stopIconSpin(true);
-  }, 2500);
+  }, RESULT_HOLD_MS);
 }
 
 function paintIcon(frame, border) {

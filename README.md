@@ -1,6 +1,6 @@
 # Group Four
 
-One-click Chrome extension that groups tabs in the current window with Grok. Right-click the toolbar icon to switch grouping mode.
+One-click Chrome extension that groups tabs in the current window from their titles. No API key. Right-click the toolbar icon to switch grouping mode.
 
 ## Install (load unpacked)
 
@@ -9,19 +9,13 @@ One-click Chrome extension that groups tabs in the current window with Grok. Rig
 3. Click **Load unpacked** and select this folder.
 4. Pin **Group Four** to the toolbar.
 
-## API key
+## How grouping works
 
-Chrome extensions cannot read a `.env` file. Paste your xAI key in the options page:
-
-1. On `chrome://extensions`, click **Details** → **Extension options**, or right-click the toolbar icon → **Options**.
-2. Paste your `XAI_API_KEY` from [console.x.ai](https://console.x.ai).
-3. Save.
-
-Optional: override the model (default `grok-4-fast`, falls back to `grok-4.6`).
+Titles (and hostnames) are split on spaces, hyphens, and other connectors. Common words (`the`, `google`, `search`, …) are ignored. Tabs that share a distinctive word (`e30`), two terms in any order (`homework 24` / `24 homework`), or a known association (School: Classroom, PlusPortals, Gmail) go in the same group, named after the repeated item. Leftovers are then grouped by type (Docs, Gmail, YouTube); anything still ungrouped goes into **Misc**.
 
 ## Use
 
-Click the toolbar icon to group tabs in the current window. Right-click the icon and choose **Grouping mode**:
+Click the toolbar icon to group tabs in the current window, or press **Alt+Shift+G**. Right-click the icon and choose **Grouping mode**:
 
 - **Only ungrouped tabs** (default) — leave existing groups alone
 - **Regroup all tabs** — ungroup the window, then group from scratch

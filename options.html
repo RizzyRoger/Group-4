@@ -19,51 +19,14 @@
         margin: 0 0 0.35rem;
       }
       p {
-        margin: 0 0 1.25rem;
-        opacity: 0.8;
-      }
-      label {
-        display: block;
-        font-weight: 600;
-        margin: 0 0 0.35rem;
-      }
-      input {
-        width: 100%;
-        box-sizing: border-box;
-        padding: 0.5rem 0.6rem;
         margin: 0 0 1rem;
-        border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-        border-radius: 6px;
-        background: transparent;
-        font: inherit;
-      }
-      button {
-        font: inherit;
-        font-weight: 600;
-        padding: 0.45rem 0.9rem;
-        border: 0;
-        border-radius: 6px;
-        background: #2563eb;
-        color: #fff;
-        cursor: pointer;
-      }
-      #status {
-        min-height: 1.4em;
-        margin: 0.85rem 0 0;
+        opacity: 0.8;
       }
     </style>
   </head>
   <body>
     <h1>Group Four</h1>
-    <p>Paste your xAI API key. It stays on this device in Chrome storage.</p>
-    <form id="form">
-      <label for="apiKey">xAI API key</label>
-      <input id="apiKey" name="apiKey" type="password" autocomplete="off" spellcheck="false" required />
-      <label for="model">Model (optional)</label>
-      <input id="model" name="model" type="text" placeholder="grok-4-fast" spellcheck="false" />
-      <button type="submit">Save</button>
-      <p id="status"></p>
-    </form>
-    <script src="options.js"></script>
+    <p>Grouping runs on this device from tab titles. No API key.</p>
+    <p>Right-click the toolbar icon to switch grouping mode, then click the icon to group the current window.</p>
   </body>
 </html>
