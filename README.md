@@ -1,24 +1,25 @@
 # Group Four
-
-One-click Chrome extension that groups tabs in the current window from their titles. No API key. Right-click the toolbar icon to switch grouping mode.
+One click Chrome extension for grouping tabs.
 
 ## Install (load unpacked)
 
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode**.
 3. Click **Load unpacked** and select this folder.
-4. Pin **Group Four** to the toolbar.
+4. Pin **Group Four** to the toolbar for one click access.
 
 ## How grouping works
 
-Titles (and hostnames) are split on spaces, hyphens, and other connectors. Common words (`the`, `google`, `search`, …) are ignored. Tabs that share a distinctive word (`e30`), two terms in any order (`homework 24` / `24 homework`), or a known association (School: Classroom, PlusPortals, Gmail) go in the same group, named after the repeated item. Leftovers are then grouped by type (Docs, Gmail, YouTube); anything still ungrouped goes into **Misc**.
+Words that carry context are identified, if they repeat then they will be grouped into tab groups. Groups are named after repeating context words. Common words are ignored and the rest are grouped into tab types. Leftovers go to misc.
+
 
 ## Use
 
-Click the toolbar icon to group tabs in the current window, or press **Alt+Shift+G**. Right-click the icon and choose **Grouping mode**:
+Click the toolbar icon to group tabs in the current window, or press **Alt/Control+Shift+G**. Right-click the icon and choose **Grouping mode**:
 
 - **Only ungrouped tabs** (default) — leave existing groups alone
-- **Regroup all tabs** — ungroup the window, then group from scratch
-- **Keep and adjust groups** — keep groups that still make sense; add or create as needed
+- **Regroup all tabs** — group from scratch
+- **Keep and adjust groups** — keep groups
 
-Pinned tabs and `chrome://` pages are skipped. While grouping, the toolbar icon rotates its square colors clockwise. When it finishes, the icon border is green (done), red (error), or grey (nothing to group), then the normal icon returns.
+Pinned tabs skipped
+Border color of the icon shows green if it works, red if something failed, and grey if there are no tabs to group.
