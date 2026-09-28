@@ -240,11 +240,52 @@ async function ungroupWindow(windowId) {
   if (ids.length) await chrome.tabs.ungroup(ids);
 }
 
-function groupStyle(group) {
+function groupKindName(name) {
+  const base = String(name || "")
+    .replace(/\s*\(\d+\)\s*$/, "")
+    .trim();
+  if (base === "Misc") return "misc";
+  if (base === "Docs" || base === "Gmail" || base === "YouTube") return "type";
+  return "context";
+}
+
+function packRank(kind) {
+  if (kind === "misc") return 2;
+  if (kind === "type") return 1;
+  return 0;
+}
+
+function groupStyle(group, count) {
+  const name =
+    String(group.name || "Group")
+      .trim()
+      .replace(/\s*\(\d+\)\s*$/, "") || "Group";
+  const n = Number(count);
+  const label = Number.isFinite(n) && n > 0 ? `${name} (${n})` : name;
   return {
     color: COLORS.includes(group.color) ? group.color : "grey",
-    title: String(group.name || "Group").trim().slice(0, 50),
+    title: label.slice(0, 50),
+    collapsed: true,
   };
+}
+
+async function tabCountInGroup(groupId) {
+  try {
+    const tabs = await chrome.tabs.query({ groupId });
+    return tabs.length;
+  } catch {
+    return 0;
+  }
+}
+
+async function applyGroupStyle(groupId, group, fallbackCount) {
+  const count = (await tabCountInGroup(groupId)) || fallbackCount || 0;
+  try {
+    await chrome.tabGroups.update(groupId, groupStyle(group, count));
+  } catch (error) {
+    console.error("Group Four: tabGroups.update failed", error);
+  }
+  return count;
 }
 
 async function tryGroupTabs(options) {
@@ -273,16 +314,17 @@ async function applyGroups(windowId, groups, validIds) {
       createProperties: { windowId },
     });
     if (groupId == null) continue;
-    try {
-      await chrome.tabGroups.update(groupId, groupStyle(group));
-    } catch (error) {
-      console.error("Group Four: tabGroups.update failed", error);
-    }
+    const size = await applyGroupStyle(groupId, group, ids.length);
     markGrouped(byId, ids, groupId);
-    packed.push(groupId);
+    packed.push({
+      id: groupId,
+      kind: group.kind || groupKindName(group.name),
+      size,
+    });
     for (const id of ids) remaining.delete(id);
   }
   await packGroups(packed);
+  await revealActiveGroup(windowId);
 }
 
 async function applyMergeGroups(windowId, groups, validIds, existingIds) {
@@ -302,13 +344,13 @@ async function applyMergeGroups(windowId, groups, validIds, existingIds) {
     if (reuse) {
       const grouped = await tryGroupTabs({ tabIds: ids, groupId: keepId });
       if (grouped == null) continue;
-      try {
-        await chrome.tabGroups.update(keepId, groupStyle(group));
-      } catch (error) {
-        console.error("Group Four: tabGroups.update failed", error);
-      }
+      const size = await applyGroupStyle(keepId, group, ids.length);
       markGrouped(byId, ids, keepId);
-      packed.push(keepId);
+      packed.push({
+        id: keepId,
+        kind: group.kind || groupKindName(group.name),
+        size,
+      });
       existingIds.delete(keepId);
     } else {
       if (ids.length < 2 && group.name !== "Misc") continue;
@@ -318,17 +360,18 @@ async function applyMergeGroups(windowId, groups, validIds, existingIds) {
         createProperties: { windowId },
       });
       if (groupId == null) continue;
-      try {
-        await chrome.tabGroups.update(groupId, groupStyle(group));
-      } catch (error) {
-        console.error("Group Four: tabGroups.update failed", error);
-      }
+      const size = await applyGroupStyle(groupId, group, ids.length);
       markGrouped(byId, ids, groupId);
-      packed.push(groupId);
+      packed.push({
+        id: groupId,
+        kind: group.kind || groupKindName(group.name),
+        size,
+      });
     }
     for (const id of ids) remaining.delete(id);
   }
   await packGroups(packed);
+  await revealActiveGroup(windowId);
 }
 
 async function loadTabMap(windowId) {
@@ -354,27 +397,58 @@ function markGrouped(byId, ids, groupId) {
   }
 }
 
-async function packGroups(groupIds) {
-  const uniqueIds = [...new Set(groupIds.filter((id) => Number.isInteger(id)))];
-  if (!uniqueIds.length) return;
+async function packGroups(records) {
+  const unique = [];
+  const seen = new Set();
+  for (const record of records || []) {
+    const id = Number.isInteger(record) ? record : record && record.id;
+    if (!Number.isInteger(id) || seen.has(id)) continue;
+    seen.add(id);
+    unique.push({
+      id,
+      kind: record.kind || groupKindName(record.title || record.name),
+      size: Number(record.size) || 0,
+    });
+  }
+  if (!unique.length) return;
   const details = (
     await Promise.all(
-      uniqueIds.map(async (id) => {
+      unique.map(async (record) => {
         try {
-          return await chrome.tabGroups.get(id);
+          const group = await chrome.tabGroups.get(record.id);
+          const size = record.size || (await tabCountInGroup(record.id));
+          return {
+            id: group.id,
+            kind: record.kind || groupKindName(group.title),
+            size,
+          };
         } catch {
           return null;
         }
       })
     )
   ).filter(Boolean);
-  details.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+  details.sort((a, b) => {
+    const rank = packRank(a.kind) - packRank(b.kind);
+    if (rank) return rank;
+    return b.size - a.size;
+  });
   for (const group of details) {
     try {
       await chrome.tabGroups.move(group.id, { index: -1 });
     } catch (error) {
       console.error("Group Four: tabGroups.move failed", error);
     }
+  }
+}
+
+async function revealActiveGroup(windowId) {
+  const [active] = await chrome.tabs.query({ windowId, active: true });
+  if (!active || active.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE) return;
+  try {
+    await chrome.tabGroups.update(active.groupId, { collapsed: false });
+  } catch (error) {
+    console.error("Group Four: tabGroups.update failed", error);
   }
 }
 

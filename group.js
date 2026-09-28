@@ -274,6 +274,10 @@ function displayName(key) {
   return titleCase(parts[0] || key);
 }
 
+function baseName(name) {
+  return String(name || "").replace(/\s*\(\d+\)\s*$/, "").trim();
+}
+
 function addCount(map, key) {
   map.set(key, (map.get(key) || 0) + 1);
 }
@@ -307,8 +311,17 @@ function candidateKeys(item, keys) {
   return found;
 }
 
+const MAX_CONTEXT_GROUPS = 5;
+const TYPE_MIN_SIZE = 4;
+const MERGE_SCORE_FLOOR = 70;
+
+function minContextSize(tabCount) {
+  return tabCount >= 40 ? 4 : 3;
+}
+
 function clusterTabs(tabs) {
   const items = tabs.map(analyzeTab);
+  const minCover = minContextSize(tabs.length);
   const tokenDf = new Map();
   const pairDf = new Map();
   const topicDf = new Map();
@@ -320,64 +333,60 @@ function clusterTabs(tabs) {
 
   const keys = new Map();
   for (const [token, df] of tokenDf) {
-    if (df < 2 || isNumeric(token)) continue;
+    if (df < minCover || isNumeric(token)) continue;
     keys.set(token, { kind: "token", df, extra: token.length });
   }
   for (const [pair, df] of pairDf) {
-    if (df >= 2) keys.set(pair, { kind: "pair", df, extra: pair.length });
+    if (df >= minCover) keys.set(pair, { kind: "pair", df, extra: pair.length });
   }
   for (const [topic, df] of topicDf) {
-    if (df >= 2) keys.set(`topic:${topic}`, { kind: "topic", df, extra: 0 });
+    if (df >= minCover) keys.set(`topic:${topic}`, { kind: "topic", df, extra: 0 });
   }
 
-  const ranked = new Map();
-  const assigned = new Map();
+  const members = new Map();
   for (const item of items) {
-    const options = candidateKeys(item, keys);
-    if (!options.length) continue;
-    ranked.set(item.id, options);
-    assigned.set(item.id, options[0][0]);
-  }
-
-  function bucketsFrom(assignment) {
-    const buckets = new Map();
-    for (const [id, key] of assignment) {
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key).push(id);
-    }
-    return buckets;
-  }
-
-  let buckets = bucketsFrom(assigned);
-  for (const [key, ids] of buckets) {
-    if (ids.length >= 2) continue;
-    for (const id of ids) {
-      const options = ranked.get(id) || [];
-      const next = options.find(([candidate]) => {
-        if (candidate === key) return false;
-        const size = buckets.get(candidate)?.length || 0;
-        return size >= 1;
-      });
-      assigned.delete(id);
-      if (next) assigned.set(id, next[0]);
+    for (const [key] of candidateKeys(item, keys)) {
+      if (!members.has(key)) members.set(key, []);
+      members.get(key).push(item.id);
     }
   }
 
-  buckets = bucketsFrom(assigned);
+  const remaining = new Set(items.map((item) => item.id));
   const order = new Map(tabs.map((tab, index) => [tab.id, index]));
   const groups = [];
-  for (const [key, ids] of buckets) {
-    if (ids.length < 2) continue;
-    const name = displayName(key);
-    ids.sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+  const usedKeys = new Set();
+
+  while (groups.length < MAX_CONTEXT_GROUPS && remaining.size >= minCover) {
+    let bestKey = null;
+    let bestIds = [];
+    let bestScore = -1;
+    for (const [key, ids] of members) {
+      if (usedKeys.has(key)) continue;
+      const cover = unique(ids.filter((id) => remaining.has(id)));
+      if (cover.length < minCover) continue;
+      const meta = keys.get(key);
+      const score = cover.length * 1000 + scoreKey(meta.kind, meta.df, meta.extra);
+      if (score > bestScore) {
+        bestScore = score;
+        bestKey = key;
+        bestIds = cover;
+      }
+    }
+    if (!bestKey) break;
+    usedKeys.add(bestKey);
+    for (const id of bestIds) remaining.delete(id);
+    const name = displayName(bestKey);
+    bestIds.sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
     groups.push({
       name,
       color: colorForName(name),
-      ids,
+      ids: bestIds,
       keepId: null,
+      kind: "context",
     });
   }
-  groups.sort((a, b) => a.name.localeCompare(b.name));
+
+  groups.sort((a, b) => b.ids.length - a.ids.length);
   return withTypeAndMisc(tabs, groups);
 }
 
@@ -427,7 +436,7 @@ function typeAndMiscGroups(tabs) {
 
   const groups = [];
   for (const [name, typed] of byType) {
-    if (typed.length >= 2) {
+    if (typed.length >= TYPE_MIN_SIZE) {
       const ids = typed
         .map((tab) => tab.id)
         .sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
@@ -436,6 +445,7 @@ function typeAndMiscGroups(tabs) {
         color: colorForName(name),
         ids,
         keepId: null,
+        kind: "type",
       });
     } else {
       rest.push(...typed);
@@ -451,9 +461,17 @@ function typeAndMiscGroups(tabs) {
       color: "grey",
       ids,
       keepId: null,
+      kind: "misc",
     });
   }
   return groups;
+}
+
+function groupKind(name) {
+  const base = baseName(name);
+  if (base === "Misc") return "misc";
+  if (base === "Docs" || base === "Gmail" || base === "YouTube") return "type";
+  return "context";
 }
 
 function withTypeAndMisc(tabs, groups) {
@@ -495,7 +513,7 @@ function mergeIntoExisting(existing, ungrouped) {
   const prepared = existing.map((group) => {
     const analyzed = group.tabs.map(analyzeTab);
     const tokens = unique([
-      ...tokenize(group.name),
+      ...tokenize(baseName(group.name)),
       ...analyzed.flatMap((item) => [...item.tokenSet]),
     ]);
     const topics = new Set();
@@ -519,10 +537,12 @@ function mergeIntoExisting(existing, ungrouped) {
   const leftovers = [];
   for (const tab of ungrouped) {
     const item = analyzeTab(tab);
+    const type = detectType(tab);
     let best = null;
     for (const group of prepared) {
-      const score = scoreAgainstGroup(item, group.tokens, group.topics);
-      if (score < 100) continue;
+      let score = scoreAgainstGroup(item, group.tokens, group.topics);
+      if (type && type === baseName(group.name)) score = Math.max(score, 80);
+      if (score < MERGE_SCORE_FLOOR) continue;
       if (!best || score > best.score) best = { group, score };
     }
     if (best) best.group.ids.push(tab.id);
@@ -532,10 +552,11 @@ function mergeIntoExisting(existing, ungrouped) {
   const groups = prepared
     .filter((group) => group.ids.length)
     .map((group) => ({
-      name: group.name,
+      name: baseName(group.name) || group.name,
       color: group.color || colorForName(group.name || "Group"),
       ids: unique(group.ids),
       keepId: group.keepId,
+      kind: groupKind(baseName(group.name)),
     }));
 
   groups.push(...clusterTabs(leftovers));
