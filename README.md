@@ -10,7 +10,7 @@ One click Chrome extension for grouping tabs.
 
 ## How grouping works
 
-Words that carry context are identified, if they repeat then they will be grouped into tab groups. Groups are named after repeating context words, with counts, and collapse except the group that holds the active tab. Common words are ignored and the rest are grouped into tab types. Leftovers go to misc.
+Words that carry context are identified, if they repeat then they will be grouped into tab groups. Groups are named after repeating context words, with counts, and collapse except the group that holds the active tab. Common words are ignored and the rest are grouped into tab types. Leftovers go to misc. Inside a group, tabs are ordered by type (largest block first) and then by similar titles.
 
 
 ## Use

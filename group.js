@@ -479,6 +479,90 @@ function withTypeAndMisc(tabs, groups) {
   return groups;
 }
 
+function titleSortKey(tab) {
+  return String(tab.title || "").toLowerCase();
+}
+
+function clusterBlockByTitle(tabs) {
+  const items = tabs.map((tab, index) => ({
+    tab,
+    index,
+    tokens: tokenize(tab.title).filter((token) => !isNumeric(token)),
+  }));
+  const assigned = new Set();
+  const usedTokens = new Set();
+  const ordered = [];
+
+  while (true) {
+    let bestToken = null;
+    let bestItems = [];
+    const remaining = items.filter((item) => !assigned.has(item.tab.id));
+    const tokenCover = new Map();
+    for (const item of remaining) {
+      for (const token of unique(item.tokens)) {
+        if (!tokenCover.has(token)) tokenCover.set(token, []);
+        tokenCover.get(token).push(item);
+      }
+    }
+    for (const [token, cover] of tokenCover) {
+      if (usedTokens.has(token) || cover.length < 2) continue;
+      const better =
+        cover.length > bestItems.length ||
+        (cover.length === bestItems.length &&
+          bestToken &&
+          (token.length > bestToken.length ||
+            (token.length === bestToken.length && token < bestToken)));
+      const first = !bestToken && cover.length >= 2;
+      if (first || better) {
+        bestToken = token;
+        bestItems = cover;
+      }
+    }
+    if (!bestToken) break;
+    usedTokens.add(bestToken);
+    bestItems.sort(
+      (a, b) =>
+        titleSortKey(a.tab).localeCompare(titleSortKey(b.tab)) || a.index - b.index
+    );
+    for (const item of bestItems) {
+      assigned.add(item.tab.id);
+      ordered.push(item.tab.id);
+    }
+  }
+
+  const rest = items.filter((item) => !assigned.has(item.tab.id));
+  rest.sort(
+    (a, b) =>
+      titleSortKey(a.tab).localeCompare(titleSortKey(b.tab)) || a.index - b.index
+  );
+  for (const item of rest) ordered.push(item.tab.id);
+  return ordered;
+}
+
+function orderTabsForViewing(tabs) {
+  if (!tabs || !tabs.length) return [];
+  if (tabs.length === 1) return [tabs[0].id];
+
+  const byType = new Map();
+  tabs.forEach((tab, index) => {
+    const type = detectType(tab) || "";
+    if (!byType.has(type)) {
+      byType.set(type, { tabs: [], firstIndex: index });
+    }
+    byType.get(type).tabs.push(tab);
+  });
+
+  const blocks = [...byType.values()].sort((a, b) => {
+    const size = b.tabs.length - a.tabs.length;
+    if (size) return size;
+    return a.firstIndex - b.firstIndex;
+  });
+
+  const ids = [];
+  for (const block of blocks) ids.push(...clusterBlockByTitle(block.tabs));
+  return ids;
+}
+
 function intersectionSize(a, b) {
   let n = 0;
   const smaller = a.size <= b.size ? a : b;
@@ -566,5 +650,6 @@ function mergeIntoExisting(existing, ungrouped) {
 if (typeof globalThis !== "undefined") {
   globalThis.clusterTabs = clusterTabs;
   globalThis.mergeIntoExisting = mergeIntoExisting;
+  globalThis.orderTabsForViewing = orderTabsForViewing;
   globalThis.tokenize = tokenize;
 }

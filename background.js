@@ -324,6 +324,7 @@ async function applyGroups(windowId, groups, validIds) {
     for (const id of ids) remaining.delete(id);
   }
   await packGroups(packed);
+  await orderPackedGroupTabs(packed);
   await revealActiveGroup(windowId);
 }
 
@@ -371,6 +372,7 @@ async function applyMergeGroups(windowId, groups, validIds, existingIds) {
     for (const id of ids) remaining.delete(id);
   }
   await packGroups(packed);
+  await orderPackedGroupTabs(packed);
   await revealActiveGroup(windowId);
 }
 
@@ -439,6 +441,38 @@ async function packGroups(records) {
     } catch (error) {
       console.error("Group Four: tabGroups.move failed", error);
     }
+  }
+}
+
+async function orderPackedGroupTabs(records) {
+  const seen = new Set();
+  for (const record of records || []) {
+    const id = Number.isInteger(record) ? record : record && record.id;
+    if (!Number.isInteger(id) || seen.has(id)) continue;
+    seen.add(id);
+    await orderTabsInGroup(id);
+  }
+}
+
+async function orderTabsInGroup(groupId) {
+  let tabs;
+  try {
+    tabs = await chrome.tabs.query({ groupId });
+  } catch (error) {
+    console.error("Group Four: tabs.query failed", error);
+    return;
+  }
+  const movable = tabs
+    .filter((tab) => !tab.pinned && !isSkippable(tab))
+    .sort((a, b) => a.index - b.index);
+  if (movable.length < 2) return;
+  const ids = orderTabsForViewing(movable.map(tabPayload));
+  if (ids.length < 2) return;
+  const start = Math.min(...movable.map((tab) => tab.index));
+  try {
+    await chrome.tabs.move(ids, { index: start });
+  } catch (error) {
+    console.error("Group Four: tabs.move failed", error);
   }
 }
 
