@@ -23,3 +23,5 @@ Click the toolbar icon to group tabs in the current window, or press **Alt/Contr
 
 Pinned tabs skipped
 Border color of the icon shows green if it works, red if something failed, and grey if there are no tabs to group.
+
+**Important** - When loading the unpacked extension, go inside the main folder, so you don't load a nested folder.
