@@ -1,0 +1,32 @@
+{
+  "name": "Two essays on Google Docs",
+  "notes": [
+    "Two different essays both live on docs.google.com. Grouping by host would wrongly merge them; the topic words (Gatsby vs Cold War) must win.",
+    "Gatsby: two docs, a study guide, a search, and a chapter summary.",
+    "Cold War: the paper, a sources sheet, History.com, Wikipedia, JSTOR, and a search. Berlin Wall and Cuban Missile Crisis never say 'Cold War' but are clearly part of it.",
+    "An untitled doc and two single class pages are not enough to form sections, so they go to Misc with Spotify and Instagram."
+  ],
+  "tabs": [
+    { "id": 1, "title": "Gatsby Symbolism Essay - Google Docs", "url": "https://docs.google.com/document/d/gats1/edit" },
+    { "id": 2, "title": "The Great Gatsby: Symbols | SparkNotes", "url": "https://www.sparknotes.com/lit/gatsby/symbols/" },
+    { "id": 3, "title": "green light meaning great gatsby - Google Search", "url": "https://www.google.com/search?q=green+light+meaning+great+gatsby" },
+    { "id": 4, "title": "The Great Gatsby Chapter 9 Summary & Analysis | LitCharts", "url": "https://www.litcharts.com/lit/the-great-gatsby/chapter-9" },
+    { "id": 5, "title": "Gatsby essay outline - Google Docs", "url": "https://docs.google.com/document/d/gats2/edit" },
+    { "id": 6, "title": "Cold War Research Paper - Google Docs", "url": "https://docs.google.com/document/d/cw1/edit" },
+    { "id": 7, "title": "Cuban Missile Crisis - Causes, Timeline & Significance | HISTORY", "url": "https://www.history.com/topics/cold-war/cuban-missile-crisis" },
+    { "id": 8, "title": "Berlin Wall - Wikipedia", "url": "https://en.wikipedia.org/wiki/Berlin_Wall" },
+    { "id": 9, "title": "containment policy cold war - Google Search", "url": "https://www.google.com/search?q=containment+policy+cold+war" },
+    { "id": 10, "title": "Cold War sources - Google Sheets", "url": "https://docs.google.com/spreadsheets/d/cw2/edit" },
+    { "id": 11, "title": "The Origins of the Cold War on JSTOR", "url": "https://www.jstor.org/stable/20031475" },
+    { "id": 12, "title": "Untitled document - Google Docs", "url": "https://docs.google.com/document/d/untitled1/edit" },
+    { "id": 13, "title": "Spotify - Web Player: Music for everyone", "url": "https://open.spotify.com/" },
+    { "id": 14, "title": "Instagram", "url": "https://www.instagram.com/" },
+    { "id": 15, "title": "Classroom - English 10", "url": "https://classroom.google.com/c/eng10" },
+    { "id": 16, "title": "Classroom - US History", "url": "https://classroom.google.com/c/ushist" }
+  ],
+  "reference": [
+    { "name": "Gatsby", "ids": [1, 2, 3, 4, 5] },
+    { "name": "Cold War", "ids": [6, 7, 8, 9, 10, 11] },
+    { "name": "Misc", "ids": [12, 13, 14, 15, 16] }
+  ]
+}

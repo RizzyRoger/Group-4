@@ -127,6 +127,7 @@ async function groupCurrentWindow(windowId) {
   try {
     const activeMode = await getMode();
     startIconSpin();
+    await refreshPersonalWords();
 
     if (activeMode === "regroup_all") {
       await ungroupWindow(windowId);
@@ -168,6 +169,19 @@ async function groupCurrentWindow(windowId) {
     await showIconResult(result);
     busy = false;
   }
+}
+
+async function refreshPersonalWords() {
+  const [{ personalWords: saved = [] }, allTabs] = await Promise.all([
+    chrome.storage.local.get("personalWords"),
+    chrome.tabs.query({}),
+  ]);
+  const learned = learnPersonalWords(allTabs.map((tab) => tab.title || ""));
+  const words = [...new Set([...saved, ...learned])];
+  if (words.length !== saved.length) {
+    await chrome.storage.local.set({ personalWords: words });
+  }
+  setPersonalWords(words);
 }
 
 function tabPayload(tab) {

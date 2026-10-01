@@ -1,0 +1,47 @@
+{
+  "name": "Science fair research across many sites",
+  "notes": [
+    "The climate science fair project spans thirteen tabs on almost thirteen different hosts (NASA, EPA, NOAA, IPCC, Our World in Data, Google Scholar, Science Buddies, wikiHow, Pinterest, YouTube). Shared words are sparse: 'climate', 'ocean acidification', 'science fair', 'CO2'. This is the hardest kind of context for a word-based sorter.",
+    "Learning piano (six tabs) and choosing a laptop (six tabs) are separate, smaller activities.",
+    "The Yamaha piano on Sweetwater belongs to piano, not to any shop grouping.",
+    "Five background tabs go to Misc."
+  ],
+  "tabs": [
+    { "id": 1, "title": "Evidence | Facts - Climate Change: Vital Signs of the Planet", "url": "https://science.nasa.gov/climate-change/evidence/" },
+    { "id": 2, "title": "Climate Change Indicators: Greenhouse Gases | US EPA", "url": "https://www.epa.gov/climate-indicators/greenhouse-gases" },
+    { "id": 3, "title": "CO2 emissions - Our World in Data", "url": "https://ourworldindata.org/co2-emissions" },
+    { "id": 4, "title": "ocean acidification effects on coral - Google Scholar", "url": "https://scholar.google.com/scholar?q=ocean+acidification+effects+on+coral" },
+    { "id": 5, "title": "Ocean acidification | National Oceanic and Atmospheric Administration", "url": "https://www.noaa.gov/education/resource-collections/ocean-coasts/ocean-acidification" },
+    { "id": 6, "title": "AR6 Synthesis Report: Climate Change 2023 - IPCC", "url": "https://www.ipcc.ch/report/ar6/syr/" },
+    { "id": 7, "title": "Science Fair Project - Ocean Acidification - Google Docs", "url": "https://docs.google.com/document/d/sfair1/edit" },
+    { "id": 8, "title": "science fair project ideas climate change - Google Search", "url": "https://www.google.com/search?q=science+fair+project+ideas+climate+change" },
+    { "id": 9, "title": "science fair board layout ideas - Pinterest", "url": "https://www.pinterest.com/search/pins/?q=science+fair+board+layout" },
+    { "id": 10, "title": "Global Temperature | Vital Signs - Climate Change: Vital Signs of the Planet", "url": "https://science.nasa.gov/climate-change/vital-signs/global-temperature/" },
+    { "id": 11, "title": "How to Test the pH of Water at Home - wikiHow", "url": "https://www.wikihow.com/Test-pH-of-Water" },
+    { "id": 12, "title": "Coral bleaching explained - YouTube", "url": "https://www.youtube.com/watch?v=coral01" },
+    { "id": 13, "title": "How Does Carbon Dioxide Make the Ocean Acidic? | Science Buddies", "url": "https://www.sciencebuddies.org/science-fair-projects/project-ideas/OceanSci_p015/ocean-sciences/ocean-acidification" },
+    { "id": 14, "title": "flowkey - Learn Piano with your favorite songs", "url": "https://app.flowkey.com/" },
+    { "id": 15, "title": "Clair de Lune Sheet Music for Piano (Solo) | MuseScore", "url": "https://musescore.com/user/123/scores/456" },
+    { "id": 16, "title": "How to Read Sheet Music for Beginners - YouTube", "url": "https://www.youtube.com/watch?v=sheet01" },
+    { "id": 17, "title": "Yamaha P-145 88-key Digital Piano | Sweetwater", "url": "https://www.sweetwater.com/store/detail/P145B--yamaha-p-145" },
+    { "id": 18, "title": "Piano Chord Chart - PianoChord.org", "url": "https://www.pianochord.org/" },
+    { "id": 19, "title": "Adult beginner practice routine? : r/piano", "url": "https://www.reddit.com/r/piano/comments/1pq/adult_beginner_practice_routine/" },
+    { "id": 20, "title": "MacBook Air 13- and 15-inch with M4 - Apple", "url": "https://www.apple.com/macbook-air/" },
+    { "id": 21, "title": "The best laptops for students in 2026 | The Verge", "url": "https://www.theverge.com/best-laptops-students" },
+    { "id": 22, "title": "XPS 13 Laptop | Dell USA", "url": "https://www.dell.com/en-us/shop/dell-laptops/xps-13-laptop/spd/xps-13-9350-laptop" },
+    { "id": 23, "title": "macbook air m4 vs dell xps 13 - Google Search", "url": "https://www.google.com/search?q=macbook+air+m4+vs+dell+xps+13" },
+    { "id": 24, "title": "Laptops & Notebook Computers - Best Buy", "url": "https://www.bestbuy.com/site/computers-pcs/laptop-computers/abcat0502000.c" },
+    { "id": 25, "title": "Lenovo ThinkPad X1 Carbon Gen 13 Laptop Review - Notebookcheck.net", "url": "https://www.notebookcheck.net/Lenovo-ThinkPad-X1-Carbon-G13-review.123456.0.html" },
+    { "id": 26, "title": "Inbox - roger@gmail.com - Gmail", "url": "https://mail.google.com/mail/u/0/#inbox" },
+    { "id": 27, "title": "Instagram", "url": "https://www.instagram.com/" },
+    { "id": 28, "title": "Weather Today - San Jose, CA | weather.com", "url": "https://weather.com/weather/today/l/San+Jose+CA" },
+    { "id": 29, "title": "Duolingo - Learn Spanish", "url": "https://www.duolingo.com/learn" },
+    { "id": 30, "title": "Wordle - The New York Times", "url": "https://www.nytimes.com/games/wordle/index.html" }
+  ],
+  "reference": [
+    { "name": "Science Fair", "ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] },
+    { "name": "Piano", "ids": [14, 15, 16, 17, 18, 19] },
+    { "name": "Laptop", "ids": [20, 21, 22, 23, 24, 25] },
+    { "name": "Misc", "ids": [26, 27, 28, 29, 30] }
+  ]
+}

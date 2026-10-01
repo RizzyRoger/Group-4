@@ -144,7 +144,6 @@ const ASSOCIATION_CLUSTERS = [
       "gradescope",
       "blackboard",
       "edgenuity",
-      "gmail",
     ],
   },
 ];
@@ -154,6 +153,73 @@ for (const cluster of ASSOCIATION_CLUSTERS) {
   for (const token of cluster.tokens) {
     TOKEN_TO_TOPIC.set(token, cluster.name);
   }
+}
+
+const SITE_TOPICS = [
+  {
+    name: "School",
+    hosts: [
+      "plusportals.com",
+      "classroom.google.com",
+      "pearson.com",
+      "mybib.com",
+      "quizlet.com",
+      "khanacademy.org",
+      "gradescope.com",
+      "desmos.com",
+      "schoology.com",
+      "instructure.com",
+      "powerschool.com",
+      "edpuzzle.com",
+      "fiveable.me",
+      "lumisource.io",
+      "spanishdict.com",
+      "digitalhistory.uh.edu",
+    ],
+  },
+  {
+    name: "Coding",
+    hosts: [
+      "github.com",
+      "stackoverflow.com",
+      "developer.mozilla.org",
+      "developer.chrome.com",
+      "kaggle.com",
+      "colab.research.google.com",
+      "huggingface.co",
+      "arxiv.org",
+    ],
+  },
+  {
+    name: "Hackathon",
+    hosts: ["devpost.com", "mlh.io"],
+  },
+  {
+    name: "Comics",
+    hosts: [
+      "xkcd.com",
+      "buttersafe.com",
+      "asofterworld.com",
+      "threewordphrase.com",
+      "smbc-comics.com",
+      "explosm.net",
+      "questionablecontent.net",
+      "webtoons.com",
+      "mangadex.org",
+      "weebcentral.com",
+    ],
+  },
+];
+
+function siteTopic(host) {
+  const h = String(host || "").toLowerCase();
+  if (!h) return "";
+  for (const topic of SITE_TOPICS) {
+    if (topic.hosts.some((site) => h === site || h.endsWith(`.${site}`))) {
+      return topic.name;
+    }
+  }
+  return "";
 }
 
 const GROUP_PALETTE = [
@@ -167,6 +233,23 @@ const GROUP_PALETTE = [
   "orange",
 ];
 
+const GENERIC_NOISE = new Set([
+  "access",
+  "blocked",
+  "captcha",
+  "denied",
+  "error",
+  "forbidden",
+  "loading",
+  "please",
+  "software",
+  "sorry",
+  "success",
+  "unauthorized",
+  "unavailable",
+  "warning",
+]);
+
 const MAX_TOKENS = 10;
 
 function splitWords(text) {
@@ -174,6 +257,52 @@ function splitWords(text) {
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
+}
+
+const EMAIL_PATTERN = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
+
+let personalWords = new Set();
+
+function stripEmails(text) {
+  return String(text || "").replace(EMAIL_PATTERN, (email) => ` ${email.split("@")[1]} `);
+}
+
+function titleWords(text) {
+  return splitWords(stripEmails(text)).filter((word) => !personalWords.has(word));
+}
+
+function setPersonalWords(words) {
+  personalWords = new Set((words || []).map((word) => String(word).toLowerCase()));
+}
+
+function learnPersonalWords(titles) {
+  const locals = [];
+  const words = new Set();
+  for (const title of titles) {
+    for (const email of String(title || "").match(EMAIL_PATTERN) || []) {
+      locals.push(email.split("@")[0].toLowerCase());
+    }
+    for (const word of splitWords(stripEmails(title))) {
+      if (word.length >= 3 && !isNumeric(word) && !TOKEN_TO_TOPIC.has(word)) {
+        words.add(word);
+      }
+    }
+  }
+  const found = new Set();
+  for (const local of locals) {
+    for (const part of local.split(/[^a-z]+/)) {
+      if (words.has(part)) found.add(part);
+      for (let i = 3; i <= part.length - 3; i += 1) {
+        const head = part.slice(0, i);
+        const tail = part.slice(i);
+        if (words.has(head) && words.has(tail)) {
+          found.add(head);
+          found.add(tail);
+        }
+      }
+    }
+  }
+  return [...found];
 }
 
 function isNumeric(token) {
@@ -197,7 +326,7 @@ function unique(list) {
 
 function tokenize(text) {
   return unique(
-    splitWords(text).filter(
+    titleWords(text).filter(
       (token) =>
         !STOPWORDS.has(token) && (token.length >= 2 || isNumeric(token))
     )
@@ -216,7 +345,7 @@ function hostTokens(host) {
 }
 
 function analyzeTab(tab) {
-  const raw = unique([...splitWords(tab.title), ...hostTokens(tab.host)]);
+  const raw = unique([...titleWords(tab.title), ...hostTokens(tab.host)]);
   const ranked = unique(
     raw.filter(
       (token) =>
@@ -229,25 +358,13 @@ function analyzeTab(tab) {
     const topic = TOKEN_TO_TOPIC.get(word);
     if (topic) topics.push(topic);
   }
+  const fromSite = siteTopic(tab.host);
+  if (fromSite) topics.push(fromSite);
   return {
     id: tab.id,
     tokenSet: new Set(tokens),
-    pairs: pairsOf(tokens),
     topics: unique(topics),
   };
-}
-
-function pairsOf(tokens) {
-  const pairs = [];
-  for (let i = 0; i < tokens.length; i += 1) {
-    for (let j = i + 1; j < tokens.length; j += 1) {
-      const a = tokens[i];
-      const b = tokens[j];
-      if (!isSpecific(a) && !isSpecific(b)) continue;
-      pairs.push(a < b ? `${a} ${b}` : `${b} ${a}`);
-    }
-  }
-  return pairs;
 }
 
 function colorForName(name) {
@@ -263,17 +380,6 @@ function titleCase(part) {
   return part.charAt(0).toUpperCase() + part.slice(1);
 }
 
-function displayName(key) {
-  if (key.startsWith("topic:")) return key.slice(6);
-  const parts = key.split(" ");
-  if (parts.length === 2) {
-    const specific = parts.find((part) => /[a-z]/.test(part) && /\d/.test(part));
-    if (specific) return titleCase(specific);
-    return parts.map(titleCase).join(" ");
-  }
-  return titleCase(parts[0] || key);
-}
-
 function baseName(name) {
   return String(name || "").replace(/\s*\(\d+\)\s*$/, "").trim();
 }
@@ -282,112 +388,184 @@ function addCount(map, key) {
   map.set(key, (map.get(key) || 0) + 1);
 }
 
-function scoreKey(kind, df, extra) {
-  if (kind === "pair") return 400 + extra - df;
-  if (kind === "token") return 200 + extra * 8 - df * 2;
-  return 80 - df;
+function isNoiseToken(token) {
+  return GENERIC_NOISE.has(token);
 }
 
-function candidateKeys(item, keys) {
-  const found = [];
-  for (const token of item.tokenSet) {
-    const meta = keys.get(token);
-    if (meta) found.push([token, meta]);
-  }
-  for (const pair of item.pairs) {
-    const meta = keys.get(pair);
-    if (meta) found.push([pair, meta]);
-  }
-  for (const topic of item.topics) {
-    const key = `topic:${topic}`;
-    const meta = keys.get(key);
-    if (meta) found.push([key, meta]);
-  }
-  found.sort((a, b) => {
-    const sa = scoreKey(a[1].kind, a[1].df, a[1].extra);
-    const sb = scoreKey(b[1].kind, b[1].df, b[1].extra);
-    return sb - sa || b[0].length - a[0].length;
-  });
-  return found;
-}
-
-const MAX_CONTEXT_GROUPS = 5;
 const TYPE_MIN_SIZE = 4;
 const MERGE_SCORE_FLOOR = 70;
 
-function minContextSize(tabCount) {
-  return tabCount >= 40 ? 4 : 3;
+const LINK_THRESHOLD = 0.01;
+const LINK_MIN_SIZE = 3;
+const SITE_BONUS = 0.35;
+const TOPIC_BONUS = 0.4;
+const RESERVED_NAMES = ["Docs", "Gmail", "YouTube", "Misc"];
+
+const NO_SIGNAL_SITES = new Set([
+  "google.com",
+  "docs.google.com",
+  "drive.google.com",
+  "mail.google.com",
+  "calendar.google.com",
+]);
+
+function siteKey(host) {
+  const h = String(host || "").toLowerCase().replace(/^www\./, "");
+  if (!h) return "";
+  if (h === "google.com" || h.endsWith(".google.com")) return h;
+  const parts = h.split(".");
+  if (parts.length > 2 && ["co", "com", "org", "ac"].includes(parts[parts.length - 2])) {
+    return parts.slice(-3).join(".");
+  }
+  return parts.slice(-2).join(".");
+}
+
+function hasSiteSignal(host) {
+  if (!host || isHugeHost(host)) return false;
+  return !NO_SIGNAL_SITES.has(siteKey(host));
+}
+
+function stem(token) {
+  if (token.length > 4 && token.endsWith("s") && !token.endsWith("ss")) {
+    return token.slice(0, -1);
+  }
+  return token;
+}
+
+function linkFeatures(tab) {
+  const tokens = new Set(
+    [...tokenize(tab.title), ...hostTokens(tab.host)]
+      .filter((token) => !isNumeric(token) && !isNoiseToken(token))
+      .map(stem)
+  );
+  return {
+    id: tab.id,
+    tokens,
+    topics: new Set(analyzeTab(tab).topics),
+    site: hasSiteSignal(tab.host) ? siteKey(tab.host) : "",
+  };
+}
+
+function jaccard(a, b) {
+  if (!a.size || !b.size) return 0;
+  const shared = intersectionSize(a, b);
+  return shared / (a.size + b.size - shared);
+}
+
+function similarity(a, b) {
+  let sim = jaccard(a.tokens, b.tokens);
+  if (a.site && a.site === b.site) sim += SITE_BONUS;
+  if (intersectionSize(a.topics, b.topics) > 0) sim += TOPIC_BONUS;
+  return Math.min(1, sim);
+}
+
+function averageLinkage(feats, threshold) {
+  const n = feats.length;
+  const sum = [];
+  for (let i = 0; i < n; i += 1) {
+    sum.push(new Array(n).fill(0));
+    for (let j = 0; j < i; j += 1) {
+      const s = similarity(feats[i], feats[j]);
+      sum[i][j] = s;
+      sum[j][i] = s;
+    }
+  }
+  const members = feats.map((f) => [f]);
+  const alive = new Set(feats.map((_, i) => i));
+
+  while (alive.size > 1) {
+    let best = -1;
+    let bi = -1;
+    let bj = -1;
+    const live = [...alive];
+    for (let x = 0; x < live.length; x += 1) {
+      for (let y = x + 1; y < live.length; y += 1) {
+        const i = live[x];
+        const j = live[y];
+        const avg = sum[i][j] / (members[i].length * members[j].length);
+        if (avg > best) {
+          best = avg;
+          bi = i;
+          bj = j;
+        }
+      }
+    }
+    if (best < threshold) break;
+    for (const k of alive) {
+      if (k === bi || k === bj) continue;
+      sum[bi][k] += sum[bj][k];
+      sum[k][bi] = sum[bi][k];
+    }
+    members[bi].push(...members[bj]);
+    alive.delete(bj);
+  }
+  return [...alive].map((i) => members[i]);
+}
+
+function nameCandidates(members) {
+  const topicCount = new Map();
+  const tokenCount = new Map();
+  const siteCount = new Map();
+  for (const f of members) {
+    for (const topic of f.topics) addCount(topicCount, topic);
+    for (const token of f.tokens) addCount(tokenCount, token);
+    if (f.site) addCount(siteCount, f.site);
+  }
+  const ranked = (map) =>
+    [...map].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length);
+  const names = [];
+  const topic = ranked(topicCount)[0];
+  if (topic && topic[1] * 2 > members.length) names.push(topic[0]);
+  for (const [token, count] of ranked(tokenCount)) {
+    if (count >= 2) names.push(titleCase(token));
+  }
+  const site = ranked(siteCount)[0];
+  if (site) names.push(titleCase(site[0].split(".")[0]));
+  return names;
+}
+
+function nameCluster(members, taken) {
+  const name = nameCandidates(members).find((candidate) => !taken.has(candidate));
+  if (name) return name;
+  let n = 2;
+  while (taken.has(`Group ${n}`)) n += 1;
+  return taken.has("Group") ? `Group ${n}` : "Group";
 }
 
 function clusterTabs(tabs) {
-  const items = tabs.map(analyzeTab);
-  const minCover = minContextSize(tabs.length);
-  const tokenDf = new Map();
-  const pairDf = new Map();
-  const topicDf = new Map();
-  for (const item of items) {
-    for (const token of item.tokenSet) addCount(tokenDf, token);
-    for (const pair of item.pairs) addCount(pairDf, pair);
-    for (const topic of item.topics) addCount(topicDf, topic);
-  }
-
-  const keys = new Map();
-  for (const [token, df] of tokenDf) {
-    if (df < minCover || isNumeric(token)) continue;
-    keys.set(token, { kind: "token", df, extra: token.length });
-  }
-  for (const [pair, df] of pairDf) {
-    if (df >= minCover) keys.set(pair, { kind: "pair", df, extra: pair.length });
-  }
-  for (const [topic, df] of topicDf) {
-    if (df >= minCover) keys.set(`topic:${topic}`, { kind: "topic", df, extra: 0 });
-  }
-
-  const members = new Map();
-  for (const item of items) {
-    for (const [key] of candidateKeys(item, keys)) {
-      if (!members.has(key)) members.set(key, []);
-      members.get(key).push(item.id);
-    }
-  }
-
-  const remaining = new Set(items.map((item) => item.id));
   const order = new Map(tabs.map((tab, index) => [tab.id, index]));
-  const groups = [];
-  const usedKeys = new Set();
+  const byOrder = (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0);
+  const clusters = averageLinkage(tabs.map(linkFeatures), LINK_THRESHOLD)
+    .filter((cluster) => cluster.length >= LINK_MIN_SIZE)
+    .sort((a, b) => b.length - a.length || byOrder(a[0].id, b[0].id));
 
-  while (groups.length < MAX_CONTEXT_GROUPS && remaining.size >= minCover) {
-    let bestKey = null;
-    let bestIds = [];
-    let bestScore = -1;
-    for (const [key, ids] of members) {
-      if (usedKeys.has(key)) continue;
-      const cover = unique(ids.filter((id) => remaining.has(id)));
-      if (cover.length < minCover) continue;
-      const meta = keys.get(key);
-      const score = cover.length * 1000 + scoreKey(meta.kind, meta.df, meta.extra);
-      if (score > bestScore) {
-        bestScore = score;
-        bestKey = key;
-        bestIds = cover;
-      }
-    }
-    if (!bestKey) break;
-    usedKeys.add(bestKey);
-    for (const id of bestIds) remaining.delete(id);
-    const name = displayName(bestKey);
-    bestIds.sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
-    groups.push({
+  const taken = new Set(RESERVED_NAMES);
+  const groups = clusters.map((members) => {
+    const name = nameCluster(members, taken);
+    taken.add(name);
+    return {
       name,
       color: colorForName(name),
-      ids: bestIds,
+      ids: members.map((f) => f.id).sort(byOrder),
       keepId: null,
       kind: "context",
-    });
-  }
-
-  groups.sort((a, b) => b.ids.length - a.ids.length);
+    };
+  });
   return withTypeAndMisc(tabs, groups);
+}
+
+function isHugeHost(host) {
+  const h = String(host || "").toLowerCase();
+  if (!h) return true;
+  if (h.includes("youtube.") || h.includes("youtu.be")) return true;
+  if (h === "google.com" || h === "www.google.com") return true;
+  if (h.includes("amazon.")) return true;
+  if (h.includes("reddit.")) return true;
+  if (h.includes("wikipedia.")) return true;
+  if (h.includes("facebook.")) return true;
+  if (h.includes("instagram.")) return true;
+  if (h.includes("twitter.") || h === "x.com" || h.endsWith(".x.com")) return true;
+  return false;
 }
 
 function detectType(tab) {
@@ -652,4 +830,6 @@ if (typeof globalThis !== "undefined") {
   globalThis.mergeIntoExisting = mergeIntoExisting;
   globalThis.orderTabsForViewing = orderTabsForViewing;
   globalThis.tokenize = tokenize;
+  globalThis.learnPersonalWords = learnPersonalWords;
+  globalThis.setPersonalWords = setPersonalWords;
 }

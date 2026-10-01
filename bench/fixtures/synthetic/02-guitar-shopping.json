@@ -1,0 +1,30 @@
+{
+  "name": "Guitar shopping",
+  "notes": [
+    "Everything about buying a first electric guitar is one section: Squier and Fender listings, the amp, strings, the comparison thread, and the review and setup videos.",
+    "Splitting into 'Squier Stratocaster' and 'Electric Guitar' is the redundancy from the real screenshot; both are the same shopping session.",
+    "The Access Denied page on guitarcenter.com is still part of the guitar hunt because of its host. The Access Denied page on zillow.com is unrelated and goes to Misc.",
+    "Gmail, Calendar, and Spotify are background tabs."
+  ],
+  "tabs": [
+    { "id": 1, "title": "Squier Classic Vibe '50s Stratocaster | Sweetwater", "url": "https://www.sweetwater.com/store/detail/CV50sStMN--squier-classic-vibe-50s-stratocaster" },
+    { "id": 2, "title": "Fender Player Stratocaster Electric Guitar | Guitar Center", "url": "https://www.guitarcenter.com/Fender/Player-Stratocaster-Electric-Guitar.gc" },
+    { "id": 3, "title": "Squier Sonic Stratocaster HT | Reverb", "url": "https://reverb.com/item/81234-squier-sonic-stratocaster-ht" },
+    { "id": 4, "title": "best beginner electric guitar under $500 - Google Search", "url": "https://www.google.com/search?q=best+beginner+electric+guitar+under+500" },
+    { "id": 5, "title": "Squier vs Fender Stratocaster, which should I buy? : r/Guitar", "url": "https://www.reddit.com/r/Guitar/comments/1abcd/squier_vs_fender_stratocaster/" },
+    { "id": 6, "title": "Fender Player Stratocaster Review - YouTube", "url": "https://www.youtube.com/watch?v=strat01" },
+    { "id": 7, "title": "Boss Katana-50 MkII 1x12\" Combo Amplifier | Sweetwater", "url": "https://www.sweetwater.com/store/detail/Katana50MkII--boss-katana-50-mkii" },
+    { "id": 8, "title": "Electric Guitar Starter Packs | Guitar Center", "url": "https://www.guitarcenter.com/Electric-Guitar-Packs/" },
+    { "id": 9, "title": "Amazon.com : electric guitar strings 10-46", "url": "https://www.amazon.com/s?k=electric+guitar+strings+10-46" },
+    { "id": 10, "title": "Inbox - roger@gmail.com - Gmail", "url": "https://mail.google.com/mail/u/0/#inbox" },
+    { "id": 11, "title": "Google Calendar - Week of September 28, 2026", "url": "https://calendar.google.com/calendar/u/0/r/week" },
+    { "id": 12, "title": "Spotify - Web Player: Music for everyone", "url": "https://open.spotify.com/" },
+    { "id": 13, "title": "How to set up a guitar amp for beginners - YouTube", "url": "https://www.youtube.com/watch?v=amp02" },
+    { "id": 14, "title": "Access Denied", "url": "https://www.guitarcenter.com/Used/Squier-Stratocaster/" },
+    { "id": 15, "title": "Access Denied", "url": "https://www.zillow.com/homes/San-Jose-CA_rb/" }
+  ],
+  "reference": [
+    { "name": "Guitar", "ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 13, 14] },
+    { "name": "Misc", "ids": [10, 11, 12, 15] }
+  ]
+}

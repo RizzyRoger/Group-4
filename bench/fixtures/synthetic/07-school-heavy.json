@@ -1,0 +1,41 @@
+{
+  "name": "School-heavy window with college apps",
+  "notes": [
+    "Five classes across Classroom, PlusPortals, school Gmail, Quizlet, Khan Academy, Desmos, Gradescope, a lab doc, and SpanishDict. Splitting per subject (Chemistry, Spanish, Algebra) would give four or five small groups; one School section is easier to scan.",
+    "College applications are related to school but a separate activity: Common App, two admissions sites, a college essay doc, SAT practice, and an essay search.",
+    "A lofi stream and Discord are background."
+  ],
+  "tabs": [
+    { "id": 1, "title": "Classroom - Algebra II", "url": "https://classroom.google.com/c/alg2" },
+    { "id": 2, "title": "Classroom - Chemistry", "url": "https://classroom.google.com/c/chem" },
+    { "id": 3, "title": "Classroom - English 10", "url": "https://classroom.google.com/c/eng10" },
+    { "id": 4, "title": "Classroom - US History", "url": "https://classroom.google.com/c/ushist" },
+    { "id": 5, "title": "Classroom - Spanish 2", "url": "https://classroom.google.com/c/span2" },
+    { "id": 6, "title": "Quadratic Functions Worksheet - Algebra II - Classroom", "url": "https://classroom.google.com/c/alg2/a/quad1/details" },
+    { "id": 7, "title": "PlusPortals - Grades", "url": "https://school.plusportals.com/grades" },
+    { "id": 8, "title": "PlusPortals - Schedule", "url": "https://school.plusportals.com/schedule" },
+    { "id": 9, "title": "PlusPortals - Homework", "url": "https://school.plusportals.com/homework" },
+    { "id": 10, "title": "Inbox - roger@school.org - Gmail", "url": "https://mail.google.com/mail/u/0/#inbox" },
+    { "id": 11, "title": "Chem lab due Friday - roger@school.org - Gmail", "url": "https://mail.google.com/mail/u/0/#inbox/FMfcg1" },
+    { "id": 12, "title": "Chemistry Unit 3 Flashcards | Quizlet", "url": "https://quizlet.com/123456/chemistry-unit-3-flash-cards/" },
+    { "id": 13, "title": "Quadratic formula | Algebra | Khan Academy", "url": "https://www.khanacademy.org/math/algebra/x2f8bb11595b61c86:quadratics" },
+    { "id": 14, "title": "Desmos | Graphing Calculator", "url": "https://www.desmos.com/calculator" },
+    { "id": 15, "title": "Chem Lab Report - Titration - Google Docs", "url": "https://docs.google.com/document/d/chemlab1/edit" },
+    { "id": 16, "title": "Chemistry Lab 2 | Gradescope", "url": "https://www.gradescope.com/courses/12345/assignments/2" },
+    { "id": 17, "title": "Spanish 2 Vocab Unit 5 Flashcards | Quizlet", "url": "https://quizlet.com/654321/spanish-2-unit-5-flash-cards/" },
+    { "id": 18, "title": "Preterite vs Imperfect | SpanishDict", "url": "https://www.spanishdict.com/guide/preterite-vs-imperfect" },
+    { "id": 19, "title": "Dashboard | Common App", "url": "https://apply.commonapp.org/dashboard" },
+    { "id": 20, "title": "Stanford Undergraduate Admission", "url": "https://admission.stanford.edu/" },
+    { "id": 21, "title": "Admission Requirements | UC Berkeley Admissions", "url": "https://admissions.berkeley.edu/requirements/" },
+    { "id": 22, "title": "College essay brainstorm - Google Docs", "url": "https://docs.google.com/document/d/college1/edit" },
+    { "id": 23, "title": "SAT Practice Test 4 | College Board", "url": "https://satsuite.collegeboard.org/sat/practice-preparation/practice-tests" },
+    { "id": 24, "title": "how to write a common app essay - Google Search", "url": "https://www.google.com/search?q=how+to+write+a+common+app+essay" },
+    { "id": 25, "title": "lofi hip hop radio - beats to relax/study to - YouTube", "url": "https://www.youtube.com/watch?v=jfKfPfyJRdk" },
+    { "id": 26, "title": "Discord | #homework-help | Study Group", "url": "https://discord.com/channels/2222/3333" }
+  ],
+  "reference": [
+    { "name": "School", "ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18] },
+    { "name": "College", "ids": [19, 20, 21, 22, 23, 24] },
+    { "name": "Misc", "ids": [25, 26] }
+  ]
+}

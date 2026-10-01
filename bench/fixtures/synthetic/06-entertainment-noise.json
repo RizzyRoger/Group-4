@@ -1,0 +1,34 @@
+{
+  "name": "Mostly unrelated entertainment",
+  "notes": [
+    "This window has almost no real activity. The five YouTube videos are unrelated to each other, but as a leftover type they read well as one YouTube section.",
+    "Minecraft, NBA, and chess each appear exactly twice (a video plus a site). Two-tab sections are the 'too specific' failure; I would leave them in YouTube and Misc rather than create three pairs.",
+    "Everything else is background browsing and belongs in Misc."
+  ],
+  "tabs": [
+    { "id": 1, "title": "$1 vs $1,000,000 Hotel Room! - YouTube", "url": "https://www.youtube.com/watch?v=mrb01" },
+    { "id": 2, "title": "Minecraft Any% Speedrun World Record - YouTube", "url": "https://www.youtube.com/watch?v=mc01" },
+    { "id": 3, "title": "How to make Tonkotsu Ramen at home - YouTube", "url": "https://www.youtube.com/watch?v=ramen01" },
+    { "id": 4, "title": "NBA Top 100 Plays of the Season - YouTube", "url": "https://www.youtube.com/watch?v=nba01" },
+    { "id": 5, "title": "The Most Brutal Chess Opening Trap - YouTube", "url": "https://www.youtube.com/watch?v=chess01" },
+    { "id": 6, "title": "Home | Netflix", "url": "https://www.netflix.com/browse" },
+    { "id": 7, "title": "Twitch", "url": "https://www.twitch.tv/" },
+    { "id": 8, "title": "Spotify - Web Player: Music for everyone", "url": "https://open.spotify.com/" },
+    { "id": 9, "title": "r/pics", "url": "https://www.reddit.com/r/pics/" },
+    { "id": 10, "title": "NBA Scores - ESPN", "url": "https://www.espn.com/nba/scoreboard" },
+    { "id": 11, "title": "Play Chess Online for Free - Chess.com", "url": "https://www.chess.com/play" },
+    { "id": 12, "title": "Redstone circuits - Minecraft Wiki", "url": "https://minecraft.wiki/w/Redstone_circuits" },
+    { "id": 13, "title": "Weather Today - San Jose, CA | weather.com", "url": "https://weather.com/weather/today/l/San+Jose+CA" },
+    { "id": 14, "title": "Your Orders - Amazon.com", "url": "https://www.amazon.com/gp/css/order-history" },
+    { "id": 15, "title": "Inbox - roger@gmail.com - Gmail", "url": "https://mail.google.com/mail/u/0/#inbox" },
+    { "id": 16, "title": "ChatGPT", "url": "https://chatgpt.com/" },
+    { "id": 17, "title": "Duolingo - Learn Spanish", "url": "https://www.duolingo.com/learn" },
+    { "id": 18, "title": "Wordle - The New York Times", "url": "https://www.nytimes.com/games/wordle/index.html" },
+    { "id": 19, "title": "Google Maps", "url": "https://www.google.com/maps" },
+    { "id": 20, "title": "CNN - Breaking News, Latest News and Videos", "url": "https://www.cnn.com/" }
+  ],
+  "reference": [
+    { "name": "YouTube", "ids": [1, 2, 3, 4, 5] },
+    { "name": "Misc", "ids": [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] }
+  ]
+}

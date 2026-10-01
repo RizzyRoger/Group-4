@@ -1,0 +1,27 @@
+{
+  "name": "Essay and school",
+  "notes": [
+    "The Joy Luck Club essay is one activity: the draft, the study guides, the searches, and the Amy Tan biography all serve the same essay even though the biography shares no title words.",
+    "PlusPortals, Classroom, and the school Gmail inbox are one School section; splitting by site would give three tiny groups.",
+    "Weather and a lofi stream are unrelated background tabs and belong in Misc."
+  ],
+  "tabs": [
+    { "id": 1, "title": "Joy Luck Club Essay Draft - Google Docs", "url": "https://docs.google.com/document/d/jlc1/edit" },
+    { "id": 2, "title": "The Joy Luck Club: Themes | SparkNotes", "url": "https://www.sparknotes.com/lit/joyluckclub/themes/" },
+    { "id": 3, "title": "joy luck club mother daughter relationships - Google Search", "url": "https://www.google.com/search?q=joy+luck+club+mother+daughter+relationships" },
+    { "id": 4, "title": "Amy Tan | Biography, Books, & Facts | Britannica", "url": "https://www.britannica.com/biography/Amy-Tan" },
+    { "id": 5, "title": "The Joy Luck Club Quotes | LitCharts", "url": "https://www.litcharts.com/lit/the-joy-luck-club/quotes" },
+    { "id": 6, "title": "PlusPortals - Grades", "url": "https://school.plusportals.com/grades" },
+    { "id": 7, "title": "Classroom - English 10", "url": "https://classroom.google.com/c/eng10" },
+    { "id": 8, "title": "Classroom - Algebra II", "url": "https://classroom.google.com/c/alg2" },
+    { "id": 9, "title": "PlusPortals - Homework", "url": "https://school.plusportals.com/homework" },
+    { "id": 10, "title": "Inbox (3) - roger@school.org - Gmail", "url": "https://mail.google.com/mail/u/0/#inbox" },
+    { "id": 11, "title": "Weather Today - San Jose, CA | weather.com", "url": "https://weather.com/weather/today/l/San+Jose+CA" },
+    { "id": 12, "title": "lofi hip hop radio - beats to relax/study to - YouTube", "url": "https://www.youtube.com/watch?v=jfKfPfyJRdk" }
+  ],
+  "reference": [
+    { "name": "Joy Luck Club", "ids": [1, 2, 3, 4, 5] },
+    { "name": "School", "ids": [6, 7, 8, 9, 10] },
+    { "name": "Misc", "ids": [11, 12] }
+  ]
+}
