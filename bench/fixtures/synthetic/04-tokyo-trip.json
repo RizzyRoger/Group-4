@@ -1,0 +1,38 @@
+{
+  "name": "Tokyo trip and a gift",
+  "notes": [
+    "The Tokyo trip spans flights, hotels, rail pass, attractions, weather, currency, eSIM, and a packing list. Many titles never say 'Tokyo' (Shinjuku, Shibuya, teamLab, JR pass), so this needs host and meaning, not just shared words.",
+    "The packing list is a Google Doc but it belongs with the trip, not a Docs bin.",
+    "Birthday gift shopping for mom is a second, smaller activity of four tabs.",
+    "Crunchyroll is Japan-flavoured but it is entertainment, not trip planning, so it goes to Misc with the other background tabs."
+  ],
+  "tabs": [
+    { "id": 1, "title": "San Francisco to Tokyo | Google Flights", "url": "https://www.google.com/travel/flights?q=SFO+to+HND" },
+    { "id": 2, "title": "United Airlines - Choose flights SFO to HND", "url": "https://www.united.com/en/us/fsr/choose-flights?f=SFO&t=HND" },
+    { "id": 3, "title": "Hotels in Shinjuku, Tokyo - Booking.com", "url": "https://www.booking.com/searchresults.html?ss=Shinjuku" },
+    { "id": 4, "title": "Shibuya apartments - Airbnb", "url": "https://www.airbnb.com/s/Shibuya--Tokyo/homes" },
+    { "id": 5, "title": "Japan Rail Pass | Official Website", "url": "https://japanrailpass.net/en/" },
+    { "id": 6, "title": "THE 15 BEST Things to Do in Tokyo (2026) - Tripadvisor", "url": "https://www.tripadvisor.com/Attractions-g298184-Activities-Tokyo.html" },
+    { "id": 7, "title": "First time in Tokyo, 7 day itinerary help : r/JapanTravel", "url": "https://www.reddit.com/r/JapanTravel/comments/1xyz/first_time_in_tokyo/" },
+    { "id": 8, "title": "Tokyo Weather in December - Weather Spark", "url": "https://weatherspark.com/m/143809/12/Average-Weather-in-December-in-Tokyo-Japan" },
+    { "id": 9, "title": "1 usd to jpy - Google Search", "url": "https://www.google.com/search?q=1+usd+to+jpy" },
+    { "id": 10, "title": "teamLab Planets TOKYO | Tickets", "url": "https://planets.teamlab.art/tokyo/" },
+    { "id": 11, "title": "shibuya sky tickets - Google Search", "url": "https://www.google.com/search?q=shibuya+sky+tickets" },
+    { "id": 12, "title": "Japan eSIM for travelers | Airalo", "url": "https://www.airalo.com/japan-esim" },
+    { "id": 13, "title": "Flower Bouquet 10280 | LEGO Icons | Official LEGO Shop US", "url": "https://www.lego.com/en-us/product/flower-bouquet-10280" },
+    { "id": 14, "title": "birthday gift ideas for mom - Google Search", "url": "https://www.google.com/search?q=birthday+gift+ideas+for+mom" },
+    { "id": 15, "title": "Personalized Birth Flower Necklace for Mom - Etsy", "url": "https://www.etsy.com/listing/1234567/personalized-birth-flower-necklace" },
+    { "id": 16, "title": "Birthday Cards for Mom | Hallmark", "url": "https://www.hallmark.com/cards/birthday-cards/for-mom/" },
+    { "id": 17, "title": "YouTube", "url": "https://www.youtube.com/" },
+    { "id": 18, "title": "Inbox - roger@gmail.com - Gmail", "url": "https://mail.google.com/mail/u/0/#inbox" },
+    { "id": 19, "title": "Chase Online - Accounts", "url": "https://secure.chase.com/web/auth/dashboard" },
+    { "id": 20, "title": "ChatGPT", "url": "https://chatgpt.com/" },
+    { "id": 21, "title": "Tokyo packing list - Google Docs", "url": "https://docs.google.com/document/d/pack1/edit" },
+    { "id": 22, "title": "Crunchyroll - Watch Popular Anime", "url": "https://www.crunchyroll.com/" }
+  ],
+  "reference": [
+    { "name": "Tokyo Trip", "ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 21] },
+    { "name": "Mom Gift", "ids": [13, 14, 15, 16] },
+    { "name": "Misc", "ids": [17, 18, 19, 20, 22] }
+  ]
+}

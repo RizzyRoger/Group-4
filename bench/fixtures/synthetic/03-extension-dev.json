@@ -1,0 +1,34 @@
+{
+  "name": "Extension development",
+  "notes": [
+    "Building the Chrome extension is one activity across GitHub, Chrome developer docs, MDN, Stack Overflow, a search, and a competitor listing on the Web Store.",
+    "I would not split GitHub from the Chrome API docs; a reader thinks of all of it as 'the extension work'.",
+    "Classroom, PlusPortals, and the school inbox form a small but real School section of three.",
+    "Netflix, Twitch, Discord, and an Amazon listing are unrelated noise."
+  ],
+  "tabs": [
+    { "id": 1, "title": "Add in-group tab ordering by RizzyRoger · Pull Request #42 · RizzyRoger/Group-4 · GitHub", "url": "https://github.com/RizzyRoger/Group-4/pull/42" },
+    { "id": 2, "title": "RizzyRoger/Group-4: One click Chrome tab grouper", "url": "https://github.com/RizzyRoger/Group-4" },
+    { "id": 3, "title": "chrome.tabGroups | API | Chrome for Developers", "url": "https://developer.chrome.com/docs/extensions/reference/api/tabGroups" },
+    { "id": 4, "title": "chrome.tabs | API | Chrome for Developers", "url": "https://developer.chrome.com/docs/extensions/reference/api/tabs" },
+    { "id": 5, "title": "The extension service worker lifecycle | Chrome for Developers", "url": "https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle" },
+    { "id": 6, "title": "javascript - How to move a tab group to the end of the tab strip in a Chrome extension - Stack Overflow", "url": "https://stackoverflow.com/questions/76120341/how-to-move-a-tab-group-to-the-end" },
+    { "id": 7, "title": "Array.prototype.sort() - JavaScript | MDN", "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort" },
+    { "id": 8, "title": "OffscreenCanvas - Web APIs | MDN", "url": "https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas" },
+    { "id": 9, "title": "chrome extension tabGroups collapsed not working - Google Search", "url": "https://www.google.com/search?q=chrome+extension+tabGroups+collapsed+not+working" },
+    { "id": 10, "title": "Issues · RizzyRoger/Group-4 · GitHub", "url": "https://github.com/RizzyRoger/Group-4/issues" },
+    { "id": 11, "title": "Watch Stranger Things | Netflix", "url": "https://www.netflix.com/watch/80057281" },
+    { "id": 12, "title": "Amazon.com: Anker USB-C Hub, 7-in-1", "url": "https://www.amazon.com/dp/B07ZVKTP53" },
+    { "id": 13, "title": "xQc - Twitch", "url": "https://www.twitch.tv/xqc" },
+    { "id": 14, "title": "Classroom - Chemistry", "url": "https://classroom.google.com/c/chem" },
+    { "id": 15, "title": "PlusPortals - Grades", "url": "https://school.plusportals.com/grades" },
+    { "id": 16, "title": "Inbox - roger@school.org - Gmail", "url": "https://mail.google.com/mail/u/0/#inbox" },
+    { "id": 17, "title": "Discord | #general | Friends", "url": "https://discord.com/channels/1234/5678" },
+    { "id": 18, "title": "Tab Manager Plus for Chrome - Chrome Web Store", "url": "https://chromewebstore.google.com/detail/tab-manager-plus-for-chro/cnkdjjdmfiffagllbiiilooaoofcoeff" }
+  ],
+  "reference": [
+    { "name": "Extension", "ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 18] },
+    { "name": "School", "ids": [14, 15, 16] },
+    { "name": "Misc", "ids": [11, 12, 13, 17] }
+  ]
+}
