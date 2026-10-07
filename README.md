@@ -14,7 +14,7 @@ One click Chrome extension for grouping tabs.
 
 Each tab is compared with every other tab by shared title words, the same site, and a shared topic (School, Coding, Hackathon, Comics, and so on). Known sites count toward a topic even when titles share no words, so PlusPortals, Classroom and Pearson tabs land together. The most similar tabs are joined step by step, and any set of 3 or more becomes a group, named after its topic or most common word, with counts. Groups collapse except the one that holds the active tab. Leftovers are sorted into tab types (Docs, Gmail, YouTube) and the rest go to Misc. Inside a group, tabs are ordered by type (largest block first) and then by similar titles.
 
-Common words, error-page words like "Access Denied", and your own name are ignored. Your name is learned locally from email addresses in open tab titles and saved in the extension's storage. Everything runs on your computer.
+Common words, Gmail/Workspace title chrome, error-page words like "Access Denied", and your own name are ignored. School-looking email domains (`student.` or `.edu`) count toward School. Your name is learned locally from email addresses in open tab titles and saved in the extension's storage. Everything runs on your computer.
 
 `node bench/run.js` scores the sorter against hand-made reference groupings in `bench/fixtures/`. Known weak spot: a window of unrelated entertainment tabs can still be merged into one group.
 

@@ -134,7 +134,6 @@ const ASSOCIATION_CLUSTERS = [
   {
     name: "School",
     tokens: [
-      "school",
       "classroom",
       "plusportals",
       "plusportal",
@@ -145,6 +144,10 @@ const ASSOCIATION_CLUSTERS = [
       "blackboard",
       "edgenuity",
     ],
+  },
+  {
+    name: "Debate",
+    tokens: ["1nc", "2ac", "1ac", "ndca", "debate"],
   },
 ];
 
@@ -192,7 +195,7 @@ const SITE_TOPICS = [
   },
   {
     name: "Hackathon",
-    hosts: ["devpost.com", "mlh.io"],
+    hosts: ["devpost.com", "mlh.io", "hackclub.com"],
   },
   {
     name: "Comics",
@@ -267,8 +270,26 @@ function stripEmails(text) {
   return String(text || "").replace(EMAIL_PATTERN, (email) => ` ${email.split("@")[1]} `);
 }
 
+function stripTitleChrome(text) {
+  let s = String(text || "");
+  s = s.replace(/\s+-\s+[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\s+-\s+.*$/i, "");
+  s = s.replace(/\s+-\s+(?:[\w.-]+\s+)*(?:workspace\s+)?mail\s*$/i, "");
+  s = s.replace(/\s+-\s+gmail\s*$/i, "");
+  return s;
+}
+
 function titleWords(text) {
-  return splitWords(stripEmails(text)).filter((word) => !personalWords.has(word));
+  return splitWords(stripEmails(stripTitleChrome(text))).filter(
+    (word) => !personalWords.has(word)
+  );
+}
+
+function schoolEmailTopic(title) {
+  for (const email of String(title || "").match(EMAIL_PATTERN) || []) {
+    const domain = email.split("@")[1].toLowerCase();
+    if (domain.includes("student.") || domain.endsWith(".edu")) return "School";
+  }
+  return "";
 }
 
 function setPersonalWords(words) {
@@ -282,7 +303,7 @@ function learnPersonalWords(titles) {
     for (const email of String(title || "").match(EMAIL_PATTERN) || []) {
       locals.push(email.split("@")[0].toLowerCase());
     }
-    for (const word of splitWords(stripEmails(title))) {
+    for (const word of splitWords(stripEmails(stripTitleChrome(title)))) {
       if (word.length >= 3 && !isNumeric(word) && !TOKEN_TO_TOPIC.has(word)) {
         words.add(word);
       }
@@ -353,13 +374,18 @@ function analyzeTab(tab) {
     )
   ).sort((a, b) => tokenRank(b) - tokenRank(a) || b.length - a.length);
   const tokens = ranked.slice(0, MAX_TOKENS);
-  const topics = [];
-  for (const word of raw) {
-    const topic = TOKEN_TO_TOPIC.get(word);
-    if (topic) topics.push(topic);
-  }
   const fromSite = siteTopic(tab.host);
-  if (fromSite) topics.push(fromSite);
+  const topics = [];
+  if (fromSite) {
+    topics.push(fromSite);
+  } else {
+    for (const word of raw) {
+      const topic = TOKEN_TO_TOPIC.get(word);
+      if (topic) topics.push(topic);
+    }
+  }
+  const fromEmail = schoolEmailTopic(tab.title);
+  if (fromEmail) topics.push(fromEmail);
   return {
     id: tab.id,
     tokenSet: new Set(tokens),
@@ -532,11 +558,37 @@ function nameCluster(members, taken) {
   return taken.has("Group") ? `Group ${n}` : "Group";
 }
 
+const SITE_TOPIC_NAMES = new Set(SITE_TOPICS.map((topic) => topic.name));
+
+function clusterSharesSiteTopic(cluster) {
+  if (cluster.length < 2) return false;
+  for (const topic of cluster[0].topics) {
+    if (!SITE_TOPIC_NAMES.has(topic)) continue;
+    if (cluster.every((item) => item.topics.has(topic))) return true;
+  }
+  return false;
+}
+
+function clusterSharesDigitToken(cluster) {
+  if (cluster.length !== 2) return false;
+  for (const token of cluster[0].tokens) {
+    if (/\d/.test(token) && cluster[1].tokens.has(token)) return true;
+  }
+  return false;
+}
+
+function keepCluster(cluster) {
+  if (cluster.length >= LINK_MIN_SIZE) return true;
+  if (cluster.length === 2 && clusterSharesSiteTopic(cluster)) return true;
+  if (cluster.length === 2 && clusterSharesDigitToken(cluster)) return true;
+  return false;
+}
+
 function clusterTabs(tabs) {
   const order = new Map(tabs.map((tab, index) => [tab.id, index]));
   const byOrder = (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0);
   const clusters = averageLinkage(tabs.map(linkFeatures), LINK_THRESHOLD)
-    .filter((cluster) => cluster.length >= LINK_MIN_SIZE)
+    .filter(keepCluster)
     .sort((a, b) => b.length - a.length || byOrder(a[0].id, b[0].id));
 
   const taken = new Set(RESERVED_NAMES);
