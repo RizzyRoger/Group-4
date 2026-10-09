@@ -143,6 +143,9 @@ const ASSOCIATION_CLUSTERS = [
       "gradescope",
       "blackboard",
       "edgenuity",
+      "homework",
+      "assignment",
+      "coursework",
     ],
   },
   {
@@ -366,7 +369,8 @@ function hostTokens(host) {
 }
 
 function analyzeTab(tab) {
-  const raw = unique([...titleWords(tab.title), ...hostTokens(tab.host)]);
+  const host = effectiveHost(tab);
+  const raw = unique([...titleWords(tab.title), ...hostTokens(host)]);
   const ranked = unique(
     raw.filter(
       (token) =>
@@ -374,7 +378,7 @@ function analyzeTab(tab) {
     )
   ).sort((a, b) => tokenRank(b) - tokenRank(a) || b.length - a.length);
   const tokens = ranked.slice(0, MAX_TOKENS);
-  const fromSite = siteTopic(tab.host);
+  const fromSite = siteTopic(host);
   const topics = [];
   if (fromSite) {
     topics.push(fromSite);
@@ -418,11 +422,12 @@ function isNoiseToken(token) {
   return GENERIC_NOISE.has(token);
 }
 
-const TYPE_MIN_SIZE = 4;
+const TYPE_MIN_SIZE = 2;
 const MERGE_SCORE_FLOOR = 70;
 
 const LINK_THRESHOLD = 0.01;
 const LINK_MIN_SIZE = 3;
+const PAIR_SIM_FLOOR = 0.75;
 const SITE_BONUS = 0.35;
 const TOPIC_BONUS = 0.4;
 const RESERVED_NAMES = ["Docs", "Gmail", "YouTube", "Misc"];
@@ -434,6 +439,36 @@ const NO_SIGNAL_SITES = new Set([
   "mail.google.com",
   "calendar.google.com",
 ]);
+
+function hostFromMaybeUrl(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  try {
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return new URL(s).hostname.toLowerCase();
+    if (s.includes("/") && s.includes(".")) return new URL(`https://${s}`).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+  if (/^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/i.test(s)) return s.toLowerCase();
+  return "";
+}
+
+function destinationHost(url) {
+  try {
+    const parsed = new URL(url || "");
+    for (const key of ["d", "url", "u"]) {
+      const host = hostFromMaybeUrl(parsed.searchParams.get(key));
+      if (host) return host;
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+function effectiveHost(tab) {
+  return destinationHost(tab && tab.url) || String((tab && tab.host) || "").toLowerCase();
+}
 
 function siteKey(host) {
   const h = String(host || "").toLowerCase().replace(/^www\./, "");
@@ -459,8 +494,9 @@ function stem(token) {
 }
 
 function linkFeatures(tab) {
+  const host = effectiveHost(tab);
   const tokens = new Set(
-    [...tokenize(tab.title), ...hostTokens(tab.host)]
+    [...tokenize(tab.title), ...hostTokens(host)]
       .filter((token) => !isNumeric(token) && !isNoiseToken(token))
       .map(stem)
   );
@@ -468,7 +504,7 @@ function linkFeatures(tab) {
     id: tab.id,
     tokens,
     topics: new Set(analyzeTab(tab).topics),
-    site: hasSiteSignal(tab.host) ? siteKey(tab.host) : "",
+    site: hasSiteSignal(host) ? siteKey(host) : "",
   };
 }
 
@@ -569,26 +605,51 @@ function clusterSharesSiteTopic(cluster) {
   return false;
 }
 
-function clusterSharesDigitToken(cluster) {
+function meanPairSimilarity(cluster) {
+  if (cluster.length < 2) return 0;
+  let sum = 0;
+  let n = 0;
+  for (let i = 0; i < cluster.length; i += 1) {
+    for (let j = i + 1; j < cluster.length; j += 1) {
+      sum += similarity(cluster[i], cluster[j]);
+      n += 1;
+    }
+  }
+  return n ? sum / n : 0;
+}
+
+function isRareSpecificToken(token, tokenDf) {
+  if ((tokenDf.get(token) || 0) !== 2) return false;
+  return token.length >= 4 || /\d/.test(token) || token.length === 3;
+}
+
+function clusterSharesRareToken(cluster, tokenDf) {
   if (cluster.length !== 2) return false;
   for (const token of cluster[0].tokens) {
-    if (/\d/.test(token) && cluster[1].tokens.has(token)) return true;
+    if (cluster[1].tokens.has(token) && isRareSpecificToken(token, tokenDf)) return true;
   }
   return false;
 }
 
-function keepCluster(cluster) {
+function keepCluster(cluster, tokenDf) {
   if (cluster.length >= LINK_MIN_SIZE) return true;
-  if (cluster.length === 2 && clusterSharesSiteTopic(cluster)) return true;
-  if (cluster.length === 2 && clusterSharesDigitToken(cluster)) return true;
+  if (cluster.length !== 2) return false;
+  if (clusterSharesSiteTopic(cluster)) return true;
+  if (meanPairSimilarity(cluster) >= PAIR_SIM_FLOOR) return true;
+  if (clusterSharesRareToken(cluster, tokenDf)) return true;
   return false;
 }
 
 function clusterTabs(tabs) {
   const order = new Map(tabs.map((tab, index) => [tab.id, index]));
   const byOrder = (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0);
-  const clusters = averageLinkage(tabs.map(linkFeatures), LINK_THRESHOLD)
-    .filter(keepCluster)
+  const feats = tabs.map(linkFeatures);
+  const tokenDf = new Map();
+  for (const feat of feats) {
+    for (const token of feat.tokens) addCount(tokenDf, token);
+  }
+  const clusters = averageLinkage(feats, LINK_THRESHOLD)
+    .filter((cluster) => keepCluster(cluster, tokenDf))
     .sort((a, b) => b.length - a.length || byOrder(a[0].id, b[0].id));
 
   const taken = new Set(RESERVED_NAMES);
@@ -621,7 +682,7 @@ function isHugeHost(host) {
 }
 
 function detectType(tab) {
-  const host = String(tab.host || "").toLowerCase();
+  const host = effectiveHost(tab);
   const title = String(tab.title || "").toLowerCase();
   if (host.includes("mail.google") || host.includes("gmail") || /\bgmail\b/.test(title)) {
     return "Gmail";

@@ -195,6 +195,7 @@ function tabPayload(tab) {
     id: tab.id,
     title: (tab.title || "").slice(0, 120),
     host,
+    url: tab.url || "",
   };
 }
 

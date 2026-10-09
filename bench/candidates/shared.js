@@ -3,7 +3,7 @@ const path = require("path");
 const vm = require("vm");
 
 function loadGroupJs() {
-  const sandbox = { console };
+  const sandbox = { console, URL };
   sandbox.globalThis = sandbox;
   const source = fs.readFileSync(path.join(__dirname, "..", "..", "group.js"), "utf8");
   vm.runInNewContext(source, sandbox);
