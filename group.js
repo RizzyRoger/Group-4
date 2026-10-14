@@ -109,6 +109,8 @@ const STOPWORDS = new Set([
   "account",
   "accounts",
   "amazon",
+  "devpost",
+  "linkedin",
 ]);
 
 const GENERIC_HOST_PARTS = new Set([
@@ -152,6 +154,18 @@ const ASSOCIATION_CLUSTERS = [
     name: "Debate",
     tokens: ["1nc", "2ac", "1ac", "ndca", "debate"],
   },
+  {
+    name: "Electronics",
+    tokens: [
+      "pedal",
+      "schematic",
+      "pcb",
+      "resistor",
+      "capacitor",
+      "distortion",
+      "overdrive",
+    ],
+  },
 ];
 
 const TOKEN_TO_TOPIC = new Map();
@@ -186,7 +200,6 @@ const SITE_TOPICS = [
   {
     name: "Coding",
     hosts: [
-      "github.com",
       "stackoverflow.com",
       "developer.mozilla.org",
       "developer.chrome.com",
@@ -198,7 +211,11 @@ const SITE_TOPICS = [
   },
   {
     name: "Hackathon",
-    hosts: ["devpost.com", "mlh.io", "hackclub.com"],
+    hosts: ["mlh.io", "hackclub.com"],
+  },
+  {
+    name: "Electronics",
+    hosts: ["digikey.com", "pcbway.com"],
   },
   {
     name: "Comics",
@@ -217,9 +234,30 @@ const SITE_TOPICS = [
   },
 ];
 
-function siteTopic(host) {
+function isDevpostPortfolio(url) {
+  try {
+    const parsed = new URL(url || "");
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    if (host !== "devpost.com") return false;
+    const parts = parsed.pathname.split("/").filter(Boolean);
+    return parts.length === 1;
+  } catch {
+    return false;
+  }
+}
+
+function isDevpostEvent(host, url) {
+  const h = String(host || "").toLowerCase();
+  if (h === "devpost.com" || h.endsWith(".devpost.com")) {
+    return !isDevpostPortfolio(url);
+  }
+  return false;
+}
+
+function siteTopic(host, url) {
   const h = String(host || "").toLowerCase();
   if (!h) return "";
+  if (isDevpostEvent(h, url)) return "Hackathon";
   for (const topic of SITE_TOPICS) {
     if (topic.hosts.some((site) => h === site || h.endsWith(`.${site}`))) {
       return topic.name;
@@ -287,12 +325,35 @@ function titleWords(text) {
   );
 }
 
+const GENERIC_MAIL_SUBJECTS = new Set([
+  "inbox",
+  "sent",
+  "draft",
+  "drafts",
+  "spam",
+  "starred",
+  "unread",
+  "snoozed",
+  "scheduled",
+  "important",
+  "subject",
+  "no",
+]);
+
 function schoolEmailTopic(title) {
+  let schoolDomain = false;
   for (const email of String(title || "").match(EMAIL_PATTERN) || []) {
     const domain = email.split("@")[1].toLowerCase();
-    if (domain.includes("student.") || domain.endsWith(".edu")) return "School";
+    if (domain.includes("student.") || domain.endsWith(".edu")) schoolDomain = true;
   }
-  return "";
+  if (!schoolDomain) return "";
+  const words = titleWords(title).filter((word) => !isNumeric(word));
+  if (!words.length || words.every((word) => GENERIC_MAIL_SUBJECTS.has(word))) return "";
+  for (const word of words) {
+    const topic = TOKEN_TO_TOPIC.get(word);
+    if (topic && topic !== "School") return "";
+  }
+  return "School";
 }
 
 function setPersonalWords(words) {
@@ -378,7 +439,7 @@ function analyzeTab(tab) {
     )
   ).sort((a, b) => tokenRank(b) - tokenRank(a) || b.length - a.length);
   const tokens = ranked.slice(0, MAX_TOKENS);
-  const fromSite = siteTopic(host);
+  const fromSite = siteTopic(host, tab.url);
   const topics = [];
   if (fromSite) {
     topics.push(fromSite);
@@ -427,10 +488,23 @@ const MERGE_SCORE_FLOOR = 70;
 
 const LINK_THRESHOLD = 0.01;
 const LINK_MIN_SIZE = 3;
-const PAIR_SIM_FLOOR = 0.75;
 const SITE_BONUS = 0.35;
 const TOPIC_BONUS = 0.4;
-const RESERVED_NAMES = ["Docs", "Gmail", "YouTube", "Misc"];
+const RESERVED_NAMES = ["Docs", "Gmail", "YouTube", "Chat", "Misc"];
+const MAX_CONTEXT_GROUPS = 6;
+const TOPIC_NAME_TOKENS = new Set([
+  "school",
+  "debate",
+  "hackathon",
+  "electronics",
+  "coding",
+  "comics",
+  "chat",
+  "docs",
+  "gmail",
+  "youtube",
+  "misc",
+]);
 
 const NO_SIGNAL_SITES = new Set([
   "google.com",
@@ -483,7 +557,9 @@ function siteKey(host) {
 
 function hasSiteSignal(host) {
   if (!host || isHugeHost(host)) return false;
-  return !NO_SIGNAL_SITES.has(siteKey(host));
+  const key = siteKey(host);
+  if (key === "devpost.com" || key === "github.com" || key === "linkedin.com") return false;
+  return !NO_SIGNAL_SITES.has(key);
 }
 
 function stem(token) {
@@ -497,7 +573,13 @@ function linkFeatures(tab) {
   const host = effectiveHost(tab);
   const tokens = new Set(
     [...tokenize(tab.title), ...hostTokens(host)]
-      .filter((token) => !isNumeric(token) && !isNoiseToken(token))
+      .filter(
+        (token) =>
+          !STOPWORDS.has(token) &&
+          !isNumeric(token) &&
+          !isNoiseToken(token) &&
+          (token.length >= 4 || /\d/.test(token) || TOKEN_TO_TOPIC.has(token))
+      )
       .map(stem)
   );
   return {
@@ -605,51 +687,82 @@ function clusterSharesSiteTopic(cluster) {
   return false;
 }
 
-function meanPairSimilarity(cluster) {
-  if (cluster.length < 2) return 0;
-  let sum = 0;
-  let n = 0;
-  for (let i = 0; i < cluster.length; i += 1) {
-    for (let j = i + 1; j < cluster.length; j += 1) {
-      sum += similarity(cluster[i], cluster[j]);
-      n += 1;
+function keepCluster(cluster) {
+  if (cluster.length >= LINK_MIN_SIZE) return true;
+  if (cluster.length === 2 && clusterSharesSiteTopic(cluster)) return true;
+  return false;
+}
+
+function tokensOf(members) {
+  const tokens = new Set();
+  for (const member of members) {
+    for (const token of member.tokens) tokens.add(token);
+  }
+  return tokens;
+}
+
+function distinctiveToken(members) {
+  const counts = new Map();
+  for (const member of members) {
+    const seen = new Set();
+    for (const token of member.tokens) {
+      if (token.length < 5 || TOPIC_NAME_TOKENS.has(token) || seen.has(token)) continue;
+      seen.add(token);
+      addCount(counts, token);
     }
   }
-  return n ? sum / n : 0;
+  const best = [...counts].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)[0];
+  if (!best || best[1] < 2) return "";
+  return best[0];
 }
 
-function isRareSpecificToken(token, tokenDf) {
-  if ((tokenDf.get(token) || 0) !== 2) return false;
-  return token.length >= 4 || /\d/.test(token) || token.length === 3;
-}
-
-function clusterSharesRareToken(cluster, tokenDf) {
-  if (cluster.length !== 2) return false;
-  for (const token of cluster[0].tokens) {
-    if (cluster[1].tokens.has(token) && isRareSpecificToken(token, tokenDf)) return true;
+function tokenMentions(tokens, needle) {
+  if (!needle || needle.length < 5) return false;
+  for (const token of tokens) {
+    if (token === needle || token.includes(needle)) return true;
   }
   return false;
 }
 
-function keepCluster(cluster, tokenDf) {
-  if (cluster.length >= LINK_MIN_SIZE) return true;
-  if (cluster.length !== 2) return false;
-  if (clusterSharesSiteTopic(cluster)) return true;
-  if (meanPairSimilarity(cluster) >= PAIR_SIM_FLOOR) return true;
-  if (clusterSharesRareToken(cluster, tokenDf)) return true;
-  return false;
+function absorbSmallerGroups(groups) {
+  const ranked = [...groups].sort(
+    (a, b) => b.ids.length - a.ids.length || a.name.localeCompare(b.name)
+  );
+  const used = new Set();
+  const kept = [];
+  for (let i = 0; i < ranked.length; i += 1) {
+    if (used.has(i)) continue;
+    const large = ranked[i];
+    let largeTokens = tokensOf(large.members);
+    let largeToken = distinctiveToken(large.members);
+    for (let j = i + 1; j < ranked.length; j += 1) {
+      if (used.has(j)) continue;
+      const small = ranked[j];
+      const smallTokens = tokensOf(small.members);
+      const smallToken = distinctiveToken(small.members);
+      if (
+        tokenMentions(largeTokens, smallToken) ||
+        tokenMentions(smallTokens, largeToken)
+      ) {
+        large.ids = unique([...large.ids, ...small.ids]);
+        large.members = large.members.concat(small.members);
+        largeTokens = tokensOf(large.members);
+        largeToken = distinctiveToken(large.members);
+        used.add(j);
+      }
+    }
+    kept.push(large);
+  }
+  return kept;
 }
 
 function clusterTabs(tabs) {
   const order = new Map(tabs.map((tab, index) => [tab.id, index]));
   const byOrder = (a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0);
-  const feats = tabs.map(linkFeatures);
-  const tokenDf = new Map();
-  for (const feat of feats) {
-    for (const token of feat.tokens) addCount(tokenDf, token);
-  }
+  const contextTabs = tabs.filter((tab) => detectType(tab) !== "Chat");
+  const feats = contextTabs.map(linkFeatures);
   const clusters = averageLinkage(feats, LINK_THRESHOLD)
-    .filter((cluster) => keepCluster(cluster, tokenDf))
+    .filter(keepCluster)
     .sort((a, b) => b.length - a.length || byOrder(a[0].id, b[0].id));
 
   const taken = new Set(RESERVED_NAMES);
@@ -662,9 +775,14 @@ function clusterTabs(tabs) {
       ids: members.map((f) => f.id).sort(byOrder),
       keepId: null,
       kind: "context",
+      members,
     };
   });
-  return withTypeAndMisc(tabs, groups);
+  const absorbed = absorbSmallerGroups(groups)
+    .sort((a, b) => b.ids.length - a.ids.length)
+    .slice(0, MAX_CONTEXT_GROUPS)
+    .map(({ members, ...group }) => group);
+  return withTypeAndMisc(tabs, absorbed);
 }
 
 function isHugeHost(host) {
@@ -678,12 +796,15 @@ function isHugeHost(host) {
   if (h.includes("facebook.")) return true;
   if (h.includes("instagram.")) return true;
   if (h.includes("twitter.") || h === "x.com" || h.endsWith(".x.com")) return true;
+  if (h === "github.com" || h.endsWith(".github.com")) return true;
+  if (h === "linkedin.com" || h.endsWith(".linkedin.com")) return true;
   return false;
 }
 
 function detectType(tab) {
   const host = effectiveHost(tab);
   const title = String(tab.title || "").toLowerCase();
+  if (host.includes("chat.google") || host === "chat.google.com") return "Chat";
   if (host.includes("mail.google") || host.includes("gmail") || /\bgmail\b/.test(title)) {
     return "Gmail";
   }
@@ -761,7 +882,7 @@ function typeAndMiscGroups(tabs) {
 function groupKind(name) {
   const base = baseName(name);
   if (base === "Misc") return "misc";
-  if (base === "Docs" || base === "Gmail" || base === "YouTube") return "type";
+  if (base === "Docs" || base === "Gmail" || base === "YouTube" || base === "Chat") return "type";
   return "context";
 }
 
