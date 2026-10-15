@@ -152,7 +152,7 @@ const ASSOCIATION_CLUSTERS = [
   },
   {
     name: "Debate",
-    tokens: ["1nc", "2ac", "1ac", "ndca", "debate"],
+    tokens: ["1nc", "2ac", "1ac", "2nc", "1nr", "1ar", "2ar", "2nr" "ndca", "debate", "policy"],
   },
   {
     name: "Electronics",
@@ -195,6 +195,8 @@ const SITE_TOPICS = [
       "lumisource.io",
       "spanishdict.com",
       "digitalhistory.uh.edu",
+      "app.slack.com",
+      "drive.google.com",
     ],
   },
   {
@@ -207,6 +209,8 @@ const SITE_TOPICS = [
       "colab.research.google.com",
       "huggingface.co",
       "arxiv.org",
+      "github.com",
+      ""
     ],
   },
   {
@@ -504,6 +508,7 @@ const TOPIC_NAME_TOKENS = new Set([
   "gmail",
   "youtube",
   "misc",
+
 ]);
 
 const NO_SIGNAL_SITES = new Set([
